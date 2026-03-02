@@ -1,7 +1,7 @@
 {
-  "name": "温暖问候",
+  "name": "为爱发电",
   "appid": "__UNI__WARM_WISHES__",
-  "description": "增进亲友感情的温暖应用",
+  "description": "传递温暖情感，找到同好伙伴",
   "versionName": "1.0.0",
   "versionCode": "100",
   "transformPx": false,
@@ -30,7 +30,7 @@
     "usingComponents": true,
     "permission": {
       "scope.userLocation": {
-        "desc": "你的位置信息将用于小程序位置接口的效果展示"
+        "desc": "定位权限：用于匹配附近的同好"
       }
     },
     "requiredPrivateInfos": []
