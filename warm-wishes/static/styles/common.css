@@ -1,0 +1,83 @@
+/* 通用样式 */
+
+/* 重置样式 */
+* {
+  box-sizing: border-box;
+}
+
+/* Flex 布局工具类 */
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 间距工具类 */
+.mt-10 { margin-top: 10rpx; }
+.mt-20 { margin-top: 20rpx; }
+.mt-30 { margin-top: 30rpx; }
+
+.mb-10 { margin-bottom: 10rpx; }
+.mb-20 { margin-bottom: 20rpx; }
+.mb-30 { margin-bottom: 30rpx; }
+
+.ml-10 { margin-left: 10rpx; }
+.ml-20 { margin-left: 20rpx; }
+.ml-30 { margin-left: 30rpx; }
+
+.mr-10 { margin-right: 10rpx; }
+.mr-20 { margin-right: 20rpx; }
+.mr-30 { margin-right: 30rpx; }
+
+.p-10 { padding: 10rpx; }
+.p-20 { padding: 20rpx; }
+.p-30 { padding: 30rpx; }
+
+/* 文本工具类 */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.text-sm { font-size: 24rpx; }
+.text-base { font-size: 28rpx; }
+.text-lg { font-size: 32rpx; }
+.text-xl { font-size: 36rpx; }
+.text-2xl { font-size: 40rpx; }
+
+.font-bold { font-weight: bold; }
+.font-medium { font-weight: 500; }
+
+/* 颜色工具类 */
+.text-primary { color: #667eea; }
+.text-secondary { color: #764ba2; }
+.text-success { color: #52c41a; }
+.text-warning { color: #faad14; }
+.text-error { color: #ff4d4f; }
+.text-gray { color: #999; }
+
+.bg-primary { background-color: #667eea; }
+.bg-white { background-color: #fff; }
+
+/* 圆角工具类 */
+.rounded { border-radius: 8rpx; }
+.rounded-lg { border-radius: 16rpx; }
+.rounded-full { border-radius: 999rpx; }
+
+/* 阴影工具类 */
+.shadow { box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06); }
+.shadow-lg { box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1); }
