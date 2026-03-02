@@ -2,6 +2,7 @@
   <view class="container">
     <!-- 问候语卡片 -->
     <quote-card
+      v-if="currentQuote"
       :quote="currentQuote"
       @refresh="handleRefresh"
       @favorite="handleFavorite"

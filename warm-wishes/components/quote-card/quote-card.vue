@@ -60,11 +60,11 @@ export default {
   
   computed: {
     tagName() {
-      return this.quote.tag ? QUOTE_TAG_LABELS[this.quote.tag] : ''
+      return this.quote?.tag ? QUOTE_TAG_LABELS[this.quote.tag] : ''
     },
     
     isFavorite() {
-      return this.quoteStore ? this.quoteStore.isFavorite(this.quote.id) : false
+      return this.quoteStore && this.quote ? this.quoteStore.isFavorite(this.quote.id) : false
     }
   },
   
