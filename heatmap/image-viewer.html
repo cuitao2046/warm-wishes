@@ -394,6 +394,61 @@
         .palette-swatch:hover::after {
             opacity: 1;
         }
+
+        /* 网格大小调整控件 */
+        .size-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .size-control label {
+            font-size: 0.85rem;
+            color: #888;
+            white-space: nowrap;
+        }
+
+        .size-slider {
+            width: 100px;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #3a3a3a;
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .size-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4ade80;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .size-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .size-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #4ade80;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .size-value {
+            font-size: 0.85rem;
+            color: #fff;
+            min-width: 45px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -425,6 +480,11 @@
             <div class="grid-controls">
                 <button class="grid-btn" id="gridBtn" title="显示/隐藏网格">⬡ 网格化</button>
                 <button class="coord-btn" id="coordBtn" title="显示/隐藏坐标">📍 坐标</button>
+                <div class="size-control">
+                    <label for="sizeSlider">半径</label>
+                    <input type="range" id="sizeSlider" class="size-slider" min="40" max="300" value="120" title="调整网格半径">
+                    <span class="size-value" id="sizeValue">120</span>
+                </div>
                 <input type="color" id="gridColorPicker" class="color-picker" title="设置网格颜色" value="#4ade80">
                 <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出</button>
             </div>
@@ -470,6 +530,8 @@
         const imageWrapper = document.getElementById('imageWrapper');
         const hexGridCanvas = document.getElementById('hexGridCanvas');
         const paletteSwatches = document.querySelectorAll('.palette-swatch');
+        const sizeSlider = document.getElementById('sizeSlider');
+        const sizeValue = document.getElementById('sizeValue');
 
         let loadedFiles = [];
         let currentIndex = -1;
@@ -479,7 +541,7 @@
         const maxZoom = 10.0;
         let gridEnabled = false;
         let coordEnabled = false;
-        const hexSize = 120; // 六边形半径
+        let hexSize = 120; // 六边形半径
         let currentGridColor = '#4ade80'; // 当前选中的网格颜色
         let defaultGridColor = '#4ade80'; // 默认网格颜色
         let gridColorMap = new Map(); // 网格ID到颜色的映射
@@ -544,6 +606,9 @@
             coordEnabled = false;
             currentGridColor = '#4ade80';
             defaultGridColor = '#4ade80';
+            hexSize = 120;
+            sizeSlider.value = hexSize;
+            sizeValue.textContent = hexSize;
             gridColorPicker.value = currentGridColor;
             gridColorMap.clear();
             selectedGridIds = new Set();
@@ -605,6 +670,9 @@
         paletteSwatches.forEach(swatch => {
             swatch.addEventListener('click', handlePaletteSwatchClick);
         });
+
+        // 网格半径调整事件
+        sizeSlider.addEventListener('input', handleSizeChange);
 
         // 网格鼠标事件 - 点击和框选
         hexGridCanvas.addEventListener('mousedown', handleGridMouseDown);
@@ -1018,6 +1086,17 @@
                     swatch.classList.remove('active');
                 }
             });
+        }
+
+        // 处理网格半径变化
+        function handleSizeChange(e) {
+            hexSize = parseInt(e.target.value);
+            sizeValue.textContent = hexSize;
+
+            // 如果网格已启用，重新绘制网格
+            if (gridEnabled) {
+                drawHexGrid();
+            }
         }
 
         function drawHexagon(ctx, centerX, centerY, size, isHighlighted = false, color = defaultGridColor, hasCustomColor = false) {
