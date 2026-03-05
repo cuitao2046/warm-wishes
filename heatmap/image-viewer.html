@@ -103,8 +103,8 @@
             object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-            transition: transform 0.2s ease;
-            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+            transform-origin: 0 0;
             display: block;
         }
 
@@ -279,7 +279,7 @@
     <div class="preview-container" id="previewContainer">
         <div class="controls">
             <button class="nav-btn" id="prevBtn" disabled>◀</button>
-            <span class="counter" id="counter">0 / 0</span>
+            <span class="counter" id="counter">"0 / 0</span>
             <button class="nav-btn" id="nextBtn" disabled>▶</button>
             <button class="control-btn" id="uploadMoreBtn">📁 添加更多</button>
             <button class="control-btn" id="resetBtn">🔄 重置</button>
@@ -328,6 +328,13 @@
         let gridEnabled = false;
         const hexSize = 30; // 六边形半径
 
+        // 拖拽相关变量
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let panX = 0;
+        let panY = 0;
+
         // 点击上传区域触发文件选择
         uploadArea.addEventListener('click', () => {
             fileInput.click();
@@ -360,7 +367,7 @@
             fileInput.click();
         });
 
-        // // 重置按钮
+        // 重置按钮
         resetBtn.addEventListener('click', () => {
             loadedFiles = [];
             currentIndex = -1;
@@ -400,6 +407,36 @@
                 } else {
                     zoomOut();
                 }
+            }
+        });
+
+        // 拖拽功能
+        imageWrapper.addEventListener('mousedown', (e) => {
+            if (!previewContainer.classList.contains('active')) return;
+            // 只在缩放大于1时允许拖拽
+            if (currentZoom <= 1.0) return;
+            // 只在图片上点击时才允许拖拽
+            if (e.target !== previewImage && e.target !== hexGridCanvas) return;
+
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+            imageWrapper.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            e.preventDefault();
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            applyTransform();
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                imageWrapper.style.cursor = 'default';
             }
         });
 
@@ -484,31 +521,46 @@
         function zoomIn() {
             if (currentZoom < maxZoom) {
                 currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
-                applyZoom();
+                applyTransform();
+                updateZoomDisplay();
+                updateZoomButtons();
             }
         }
 
         function zoomOut() {
             if (currentZoom > minZoom) {
                 currentZoom = Math.max(currentZoom - zoomStep, minZoom);
-                applyZoom();
+                // 缩放小于等于1时重置拖拽位置
+                if (currentZoom <= 1.0) {
+                    resetPan();
+                }
+                applyTransform();
+                updateZoomDisplay();
+                updateZoomButtons();
             }
         }
 
         function resetZoom() {
             currentZoom = 1.0;
-            applyZoom();
+            resetPan();
+            applyTransform();
+            updateZoomDisplay();
+            updateZoomButtons();
+        }
+
+        function resetPan() {
+            panX = 0;
+            panY = 0;
         }
 
         function updateZoomDisplay() {
             zoomDisplay.textContent = Math.round(currentZoom * 100) + '%';
         }
 
-        function applyZoom() {
-            previewImage.style.transform = `scale(${currentZoom})`;
-            hexGridCanvas.style.transform = `scale(${currentZoom})`;
-            updateZoomDisplay();
-            updateZoomButtons();
+        function applyTransform() {
+            const transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
+            previewImage.style.transform = transform;
+            hexGridCanvas.style.transform = transform;
         }
 
         function updateZoomButtons() {
