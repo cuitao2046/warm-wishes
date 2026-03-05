@@ -117,17 +117,18 @@
             position: absolute;
             top: 0;
             left: 0;
-            pointer-events: auto;
+            pointer-events: none;
             border-radius: 8px;
             overflow: hidden;
             display: none;
             transform-origin: 0 0;
             transition: transform 0.1s ease-out;
-            cursor: crosshair;
         }
 
         .hex-grid-overlay.active {
             display: block;
+            pointer-events: auto;
+            cursor: crosshair;
         }
 
         .preview-info {
