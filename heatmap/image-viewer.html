@@ -92,14 +92,34 @@
             display: flex;
         }
 
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
         .preview-image {
-            max-width: 95%;
+            max-width: 95vw;
             max-height: calc(100vh - 120px);
             object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
             transition: transform 0.2s ease;
             transform-origin: center center;
+            display: block;
+        }
+
+        .hex-grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .hex-grid-overlay.active {
+            display: block;
         }
 
         .preview-info {
@@ -121,6 +141,8 @@
             border-radius: 10px;
             backdrop-filter: blur(10px);
             z-index: 1001;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .control-btn {
@@ -137,6 +159,11 @@
 
         .control-btn:hover {
             opacity: 0.8;
+        }
+
+        .control-btn.active {
+            background: #4ade80;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
         }
 
         .nav-btn {
@@ -205,6 +232,35 @@
             opacity: 0.3;
             cursor: not-allowed;
         }
+
+        .grid-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 15px;
+            padding-left: 15px;
+            border-left: 1px solid #444;
+        }
+
+        .grid-btn {
+            background: #3a3a3a;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .grid-btn:hover {
+            background: #4a4a4a;
+        }
+
+        .grid-btn.active {
+            background: #4ade80;
+            color: #1a1a1a;
+        }
     </style>
 </head>
 <body>
@@ -233,8 +289,14 @@
                 <button class="zoom-btn" id="zoomInBtn" title="放大">+</button>
                 <button class="zoom-btn" id="zoomResetBtn" title="重置缩放">1:1</button>
             </div>
+            <div class="grid-controls">
+                <button class="grid-btn" id="gridBtn" title="显示/隐藏网格">⬡ 网格化</button>
+            </div>
         </div>
-        <img class="preview-image" id="previewImage" src="" alt="预览图片">
+        <div class="image-wrapper" id="imageWrapper">
+            <img class="preview-image" id="previewImage" src="" alt="预览图片">
+            <canvas class="hex-grid-overlay" id="hexGridCanvas"></canvas>
+        </div>
         <div class="preview-info" id="previewInfo"></div>
     </div>
 
@@ -253,6 +315,9 @@
         const zoomInBtn = document.getElementById('zoomInBtn');
         const zoomResetBtn = document.getElementById('zoomResetBtn');
         const zoomDisplay = document.getElementById('zoomDisplay');
+        const gridBtn = document.getElementById('gridBtn');
+        const imageWrapper = document.getElementById('imageWrapper');
+        const hexGridCanvas = document.getElementById('hexGridCanvas');
 
         let loadedFiles = [];
         let currentIndex = -1;
@@ -260,6 +325,8 @@
         const zoomStep = 0.25;
         const minZoom = 0.1;
         const maxZoom = 10.0;
+        let gridEnabled = false;
+        const hexSize = 30; // 六边形半径
 
         // 点击上传区域触发文件选择
         uploadArea.addEventListener('click', () => {
@@ -320,6 +387,9 @@
         zoomInBtn.addEventListener('click', zoomIn);
         zoomResetBtn.addEventListener('click', resetZoom);
 
+        // 网格按钮
+        gridBtn.addEventListener('click', toggleGrid);
+
         // 鼠标滚轮缩放
         previewContainer.addEventListener('wheel', (e) => {
             if (!previewContainer.classList.contains('active')) return;
@@ -347,6 +417,8 @@
                 zoomOut();
             } else if (e.key === '0') {
                 resetZoom();
+            } else if (e.key === 'g' || e.key === 'G') {
+                toggleGrid();
             }
         });
 
@@ -391,6 +463,13 @@
             updateCounter();
             updateNavButtons();
             resetZoom();
+
+            // 图片加载完成后绘制网格
+            previewImage.onload = () => {
+                if (gridEnabled) {
+                    drawHexGrid();
+                }
+            };
         }
 
         function updateCounter() {
@@ -427,6 +506,7 @@
 
         function applyZoom() {
             previewImage.style.transform = `scale(${currentZoom})`;
+            hexGridCanvas.style.transform = `scale(${currentZoom})`;
             updateZoomDisplay();
             updateZoomButtons();
         }
@@ -434,6 +514,73 @@
         function updateZoomButtons() {
             zoomOutBtn.disabled = currentZoom <= minZoom;
             zoomInBtn.disabled = currentZoom >= maxZoom;
+        }
+
+        function toggleGrid() {
+            gridEnabled = !gridEnabled;
+            gridBtn.classList.toggle('active', gridEnabled);
+
+            if (gridEnabled) {
+                hexGridCanvas.classList.add('active');
+                drawHexGrid();
+            } else {
+                hexGridCanvas.classList.remove('active');
+            }
+        }
+
+        function drawHexGrid() {
+            const width = previewImage.width;
+            const height = previewImage.height;
+
+            if (width === 0 || height === 0) return;
+
+            hexGridCanvas.width = width;
+            hexGridCanvas.height = height;
+            hexGridCanvas.style.width = previewImage.style.width || previewImage.offsetWidth + 'px';
+            hexGridCanvas.style.height = previewImage.style.height || previewImage.offsetHeight + 'px';
+
+            const ctx = hexGridCanvas.getContext('2d');
+            ctx.clearRect(0, 0, width, height);
+
+            // 设置六边形样式
+            ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
+            ctx.lineWidth = 1;
+
+            // 计算六边形宽度和高度
+            const hexWidth = Math.sqrt(3) * hexSize;
+            const hexHeight = 2 * hexSize;
+            const verticalSpacing = hexHeight * 0.75;
+            const horizontalSpacing = hexWidth;
+
+            // 绘制六边形网格
+            const cols = Math.ceil(width / horizontalSpacing) + 1;
+            const rows = Math.ceil(height / verticalSpacing) + 1;
+
+            for (let row = -1; row < rows; row++) {
+                for (let col = -1; col < cols; col++) {
+                    // 奇数行偏移
+                    const x = col * horizontalSpacing + (row % 2 === 1 ? hexWidth / 2 : 0);
+                    const y = row * verticalSpacing;
+
+                    drawHexagon(ctx, x, y, hexSize);
+                }
+            }
+        }
+
+        function drawHexagon(ctx, centerX, centerY, size) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 3) * i;
+                const x = centerX + size * Math.cos(angle);
+                const y = centerY + size * Math.sin(angle);
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.stroke();
         }
 
         function formatSize(bytes) {
