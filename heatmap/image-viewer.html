@@ -306,6 +306,30 @@
         .export-btn:hover {
             background: #93c5fd;
         }
+
+        .color-picker {
+            width: 36px;
+            height: 36px;
+            border: 2px solid #3a3a3a;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+            padding: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .color-picker:hover {
+            border-color: #4ade80;
+        }
+
+        .color-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .color-picker::-webkit-color-swatch {
+            border: none;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body>
@@ -337,6 +361,7 @@
             <div class="grid-controls">
                 <button class="grid-btn" id="gridBtn" title="显示/隐藏网格">⬡ 网格化</button>
                 <button class="coord-btn" id="coordBtn" title="显示/隐藏坐标">📍 坐标</button>
+                <input type="color" id="gridColorPicker" class="color-picker" title="设置网格颜色" value="#4ade80">
                 <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出</button>
             </div>
         </div>
@@ -365,6 +390,7 @@
         const gridBtn = document.getElementById('gridBtn');
         const coordBtn = document.getElementById('coordBtn');
         const exportBtn = document.getElementById('exportBtn');
+        const gridColorPicker = document.getElementById('gridColorPicker');
         const imageWrapper = document.getElementById('imageWrapper');
         const hexGridCanvas = document.getElementById('hexGridCanvas');
 
@@ -377,6 +403,7 @@
         let gridEnabled = false;
         let coordEnabled = false;
         const hexSize = 120; // 六边形半径
+        let gridColor = '#4ade80'; // 网格颜色
         let gridCoordinates = []; // 存储所有网格的坐标数据
         let selectedGridIds = new Set(); // 当前选中的网格ID集合（多选）
 
@@ -436,6 +463,8 @@
             panY = 0;
             gridEnabled = false;
             coordEnabled = false;
+            gridColor = '#4ade80';
+            gridColorPicker.value = gridColor;
             selectedGridIds = new Set();
             gridCoordinates = [];
             isSelecting = false;
@@ -485,6 +514,8 @@
         coordBtn.addEventListener('click', toggleCoord);
         // 导出按钮
         exportBtn.addEventListener('click', exportCoordinates);
+        // 颜色选择器
+        gridColorPicker.addEventListener('input', handleColorChange);
 
         // 网格鼠标事件 - 点击和框选
         hexGridCanvas.addEventListener('mousedown', handleGridMouseDown);
@@ -816,15 +847,31 @@
                 const selHeight = Math.abs(selectionEndY - selectionStartY);
 
                 // 绘制半透明填充
-                ctx.fillStyle = 'rgba(74, 222, 128, 0.15)';
+                ctx.fillStyle = hexToRgba(gridColor, 0.15);
                 ctx.fillRect(selLeft, selTop, selWidth, selHeight);
 
                 // 绘制边框
-                ctx.strokeStyle = 'rgba(74, 222, 128, 0.8)';
+                ctx.strokeStyle = hexToRgba(gridColor, 0.8);
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
                 ctx.strokeRect(selLeft, selTop, selWidth, selHeight);
                 ctx.setLineDash([]);
+            }
+        }
+
+        // 将十六进制颜色转换为 rgba 格式
+        function hexToRgba(hex, alpha) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        // 处理颜色变化
+        function handleColorChange(e) {
+            gridColor = e.target.value;
+            if (gridEnabled) {
+                drawHexGrid();
             }
         }
 
@@ -845,13 +892,13 @@
 
             if (isHighlighted) {
                 // 高亮样式：填充+边框
-                ctx.fillStyle = 'rgba(74, 222, 128, 0.3)';
+                ctx.fillStyle = hexToRgba(gridColor, 0.3);
                 ctx.fill();
-                ctx.strokeStyle = 'rgba(74, 222, 128, 1)';
+                ctx.strokeStyle = hexToRgba(gridColor, 1);
                 ctx.lineWidth = 2;
             } else {
                 // 普通样式：只有边框
-                ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
+                ctx.strokeStyle = hexToRgba(gridColor, 0.5);
                 ctx.lineWidth = 1;
             }
             ctx.stroke();
