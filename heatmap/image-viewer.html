@@ -307,29 +307,6 @@
             background: #93c5fd;
         }
 
-        .color-picker {
-            width: 36px;
-            height: 36px;
-            border: 2px solid #3a3a3a;
-            border-radius: 4px;
-            cursor: pointer;
-            background: none;
-            padding: 2px;
-            transition: all 0.3s ease;
-        }
-
-        .color-picker:hover {
-            border-color: #4ade80;
-        }
-
-        .color-picker::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-
-        .color-picker::-webkit-color-swatch {
-            border: none;
-            border-radius: 2px;
-        }
 
         /* 调色板样式 */
         .palette-container {
@@ -485,7 +462,6 @@
                     <input type="range" id="sizeSlider" class="size-slider" min="40" max="300" value="120" title="调整网格半径">
                     <span class="size-value" id="sizeValue">120</span>
                 </div>
-                <input type="color" id="gridColorPicker" class="color-picker" title="设置网格颜色" value="#4ade80">
                 <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出</button>
             </div>
             <div class="palette-container">
@@ -526,7 +502,6 @@
         const gridBtn = document.getElementById('gridBtn');
         const coordBtn = document.getElementById('coordBtn');
         const exportBtn = document.getElementById('exportBtn');
-        const gridColorPicker = document.getElementById('gridColorPicker');
         const imageWrapper = document.getElementById('imageWrapper');
         const hexGridCanvas = document.getElementById('hexGridCanvas');
         const paletteSwatches = document.querySelectorAll('.palette-swatch');
@@ -609,7 +584,6 @@
             hexSize = 120;
             sizeSlider.value = hexSize;
             sizeValue.textContent = hexSize;
-            gridColorPicker.value = currentGridColor;
             gridColorMap.clear();
             selectedGridIds = new Set();
             gridCoordinates = [];
@@ -663,8 +637,6 @@
         coordBtn.addEventListener('click', toggleCoord);
         // 导出按钮
         exportBtn.addEventListener('click', exportCoordinates);
-        // 颜色选择器
-        gridColorPicker.addEventListener('input', handleColorChange);
 
         // 调色板色块点击事件
         paletteSwatches.forEach(swatch => {
@@ -1057,7 +1029,6 @@
 
             // 更新当前选中颜色
             currentGridColor = color;
-            gridColorPicker.value = color;
 
             // 更新调色板选中状态
             updatePaletteActiveState(color);
