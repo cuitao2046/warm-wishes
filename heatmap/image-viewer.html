@@ -447,6 +447,9 @@
             previewImage.style.transform = '';
             hexGridCanvas.style.transform = '';
 
+            // 清除 onload 处理器
+            previewImage.onload = null;
+
             previewImage.src = '';
             fileInput.value = '';
             uploadArea.style.display = 'flex';
@@ -590,16 +593,24 @@
             updateCounter();
             updateNavButtons();
 
-            // 先设置 onload 处理器，再设置 src
-            previewImage.onload = () => {
-                resetZoom();
+            // 先设置 src，然后检查图片是否已加载完成
+            previewImage.src = file.dataUrl;
 
+            // 如果图片已经加载完成（比如从缓存），直接执行后续逻辑
+            if (previewImage.complete && previewImage.naturalWidth > 0) {
+                resetZoom();
                 if (gridEnabled) {
                     drawHexGrid();
                 }
-            };
-
-            previewImage.src = file.dataUrl;
+            } else {
+                // 否则等待加载完成
+                previewImage.onload = () => {
+                    resetZoom();
+                    if (gridEnabled) {
+                        drawHexGrid();
+                    }
+                };
+            }
         }
 
         function updateCounter() {
