@@ -591,39 +591,48 @@
         }
 
         function drawHexGrid() {
+            // 获取图片的显示尺寸
+            let displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
+            let displayHeight = previewImage.offsetHeight || previewImage.clientHeight;
             const naturalWidth = previewImage.naturalWidth;
             const naturalHeight = previewImage.naturalHeight;
-            const displayWidth = previewImage.offsetWidth;
-            const displayHeight = previewImage.offsetHeight;
 
-            if (naturalWidth === 0 || naturalHeight === 0) return;
+            // 如果还没有显示尺寸，使用 naturalWidth/naturalHeight 计算
+            if (displayWidth === 0 || displayHeight === 0) {
+                // 计算图片适应屏幕的尺寸
+                const maxWidth = window.innerWidth * 0.95;
+                const maxHeight = window.innerHeight - 120;
+                const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight, 1.0);
+                displayWidth = naturalWidth * scale;
+                displayHeight = naturalHeight * scale;
+            }
 
-            // 设置 Canvas 的实际尺寸（像素）- 使用图片自然尺寸
-            hexGridCanvas.width = naturalWidth;
-            hexGridCanvas.height = naturalHeight;
+            if (displayWidth === 0 || displayHeight === 0) return;
 
-            // 设置 Canvas 的显示尺寸匹配图片的显示尺寸
+            // 设置 Canvas 的实际尺寸和显示尺寸都匹配图片的显示尺寸
+            hexGridCanvas.width = displayWidth;
+            hexGridCanvas.height = displayHeight;
             hexGridCanvas.style.width = displayWidth + 'px';
             hexGridCanvas.style.height = displayHeight + 'px';
 
             const ctx = hexGridCanvas.getContext('2d');
-            ctx.clearRect(0, 0, naturalWidth, naturalHeight);
+            ctx.clearRect(0, 0, displayWidth, displayHeight);
 
-            // 缩放上下文以匹配自然尺寸到显示尺寸的比例
-            ctx.scale(displayWidth / naturalWidth, displayHeight / naturalHeight);
+            // 计算缩放比例 - 六边形大小需要根据图片缩放比例调整
+            const imageScale = displayWidth / naturalWidth;
 
             // 设置六边形样式
             ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
             ctx.lineWidth = 1;
 
-            // 六边形尺寸计算
-            const r = hexSize; // 中心到顶点的距离
+            // 六边形尺寸计算 - 根据图片缩放比例调整
+            const r = hexSize * imageScale; // 中心到顶点的距离
             const xDist = r * Math.sqrt(3); // 水平间距
             const yDist = r * 1.5; // 垂直间距
 
             // 绘制六边形网格
-            const cols = Math.ceil(naturalWidth / xDist) + 2;
-            const rows = Math.ceil(naturalHeight / yDist) + 2;
+            const cols = Math.ceil(displayWidth / xDist) + 2;
+            const rows = Math.ceil(displayHeight / yDist) + 2;
 
             for (let row = -1; row < rows; row++) {
                 for (let col = -1; col < cols; col++) {
@@ -631,7 +640,7 @@
                     const x = col * xDist + (row % 2 === 1 ? xDist / 2 : 0);
                     const y = row * yDist;
 
-                    drawHexagon(ctx, x, y, hexSize);
+                    drawHexagon(ctx, x, y, r);
                 }
             }
         }
