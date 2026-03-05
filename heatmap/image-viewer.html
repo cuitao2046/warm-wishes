@@ -593,13 +593,16 @@
 
             if (naturalWidth === 0 || naturalHeight === 0) return;
 
-            hexGridCanvas.naturalWidth = naturalWidth;
-            hexGridCanvas.naturalHeight = height;
-            hexGridCanvas.style.naturalWidth = previewImage.style.naturalWidth || previewImage.offsetWidth + 'px';
-            hexGridCanvas.style.height = previewImage.style.height || previewImage.offsetHeight + 'px';
+            // 设置 Canvas 的实际尺寸（像素）
+            hexGridCanvas.width = naturalWidth;
+            hexGridCanvas.height = naturalHeight;
+
+            // 设置 Canvas 的显示尺寸（与图片一致）
+            hexGridCanvas.style.width = previewImage.offsetWidth + 'px';
+            hexGridCanvas.style.height = previewImage.offsetHeight + 'px';
 
             const ctx = hexGridCanvas.getContext('2d');
-            ctx.clearRect(0, 0, naturalWidth, height);
+            ctx.clearRect(0, 0, naturalWidth, naturalHeight);
 
             // 设置六边形样式
             ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
