@@ -360,7 +360,7 @@
             fileInput.click();
         });
 
-        // 重置按钮
+        // // 重置按钮
         resetBtn.addEventListener('click', () => {
             loadedFiles = [];
             currentIndex = -1;
@@ -546,21 +546,20 @@
             ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
             ctx.lineWidth = 1;
 
-            // 计算六边形宽度和高度
-            const hexWidth = Math.sqrt(3) * hexSize;
-            const hexHeight = 2 * hexSize;
-            const verticalSpacing = hexHeight * 0.75;
-            const horizontalSpacing = hexWidth;
+            // 六边形尺寸计算
+            const r = hexSize; // 中心到顶点的距离
+            const xDist = r * Math.sqrt(3); // 水平间距
+            const yDist = r * 1.5; // 垂直间距
 
             // 绘制六边形网格
-            const cols = Math.ceil(width / horizontalSpacing) + 1;
-            const rows = Math.ceil(height / verticalSpacing) + 1;
+            const cols = Math.ceil(width / xDist) + 2;
+            const rows = Math.ceil(height / yDist) + 2;
 
             for (let row = -1; row < rows; row++) {
                 for (let col = -1; col < cols; col++) {
-                    // 奇数行偏移
-                    const x = col * horizontalSpacing + (row % 2 === 1 ? hexWidth / 2 : 0);
-                    const y = row * verticalSpacing;
+                    // 奇数行向右偏移一半水平间距
+                    const x = col * xDist + (row % 2 === 1 ? xDist / 2 : 0);
+                    const y = row * yDist;
 
                     drawHexagon(ctx, x, y, hexSize);
                 }
@@ -569,8 +568,9 @@
 
         function drawHexagon(ctx, centerX, centerY, size) {
             ctx.beginPath();
+            // 六边形顶点，从-30度开始（尖顶朝上）
             for (let i = 0; i < 6; i++) {
-                const angle = (Math.PI / 3) * i;
+                const angle = (Math.PI / 3) * i - Math.PI / 6;
                 const x = centerX + size * Math.cos(angle);
                 const y = centerY + size * Math.sin(angle);
                 if (i === 0) {
