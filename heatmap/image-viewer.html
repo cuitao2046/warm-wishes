@@ -268,6 +268,42 @@
             background: #4ade80;
             color: #1a1a1a;
         }
+
+        .coord-btn {
+            background: #3a3a3a;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .coord-btn:hover {
+            background: #4a4a4a;
+        }
+
+        .coord-btn.active {
+            background: #4ade80;
+            color: #1a1a1a;
+        }
+
+        .export-btn {
+            background: #60a5fa;
+            color: #1a1a1a;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .export-btn:hover {
+            background: #93c5fd;
+        }
     </style>
 </head>
 <body>
@@ -298,6 +334,8 @@
             </div>
             <div class="grid-controls">
                 <button class="grid-btn" id="gridBtn" title="显示/隐藏网格">⬡ 网格化</button>
+                <button class="coord-btn" id="coordBtn" title="显示/隐藏坐标">📍 坐标</button>
+                <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出</button>
             </div>
         </div>
         <div class="image-wrapper" id="imageWrapper">
@@ -323,6 +361,8 @@
         const zoomResetBtn = document.getElementById('zoomResetBtn');
         const zoomDisplay = document.getElementById('zoomDisplay');
         const gridBtn = document.getElementById('gridBtn');
+        const coordBtn = document.getElementById('coordBtn');
+        const exportBtn = document.getElementById('exportBtn');
         const imageWrapper = document.getElementById('imageWrapper');
         const hexGridCanvas = document.getElementById('hexGridCanvas');
 
@@ -333,7 +373,9 @@
         const minZoom = 0.1;
         const maxZoom = 10.0;
         let gridEnabled = false;
+        let coordEnabled = false;
         const hexSize = 120; // 六边形半径
+        let gridCoordinates = []; // 存储所有网格的坐标数据
 
         // 拖拽相关变量
         let isDragging = false;
@@ -403,6 +445,10 @@
 
         // 网格按钮
         gridBtn.addEventListener('click', toggleGrid);
+        // 坐标按钮
+        coordBtn.addEventListener('click', toggleCoord);
+        // 导出按钮
+        exportBtn.addEventListener('click', exportCoordinates);
 
         // 鼠标滚轮缩放
         previewContainer.addEventListener('wheel', (e) => {
@@ -590,7 +636,35 @@
             }
         }
 
+        function toggleCoord() {
+            coordEnabled = !coordEnabled;
+            coordBtn.classList.toggle('active', coordEnabled);
+
+            if (gridEnabled) {
+                drawHexGrid();
+            }
+        }
+
+        function exportCoordinates() {
+            if (gridCoordinates.length === 0) {
+                alert('请先开启网格化以生成坐标数据');
+                return;
+            }
+
+            const dataStr = JSON.stringify(gridCoordinates, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'grid-coordinates.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
         function drawHexGrid() {
+            // 清空坐标数据
+            gridCoordinates = [];
+
             // 获取图片的显示尺寸
             let displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
             let displayHeight = previewImage.offsetHeight || previewImage.clientHeight;
@@ -621,10 +695,6 @@
             // 计算缩放比例 - 六边形大小需要根据图片缩放比例调整
             const imageScale = displayWidth / naturalWidth;
 
-            // 设置六边形样式
-            ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
-            ctx.lineWidth = 1;
-
             // 六边形尺寸计算 - 根据图片缩放比例调整
             const r = hexSize * imageScale; // 中心到顶点的距离
             const xDist = r * Math.sqrt(3); // 水平间距
@@ -634,13 +704,54 @@
             const cols = Math.ceil(displayWidth / xDist) + 2;
             const rows = Math.ceil(displayHeight / yDist) + 2;
 
+            // 设置六边形样式
+            ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
+            ctx.lineWidth = 1;
+
             for (let row = -1; row < rows; row++) {
                 for (let col = -1; col < cols; col++) {
                     // 奇数行向右偏移一半水平间距
-                    const x = col * xDist + (row % 2 === 1 ? xDist / 2 : 0);
-                    const y = row * yDist;
+                    const centerX = col * xDist + (row % 2 === 1 ? xDist / 2 : 0);
+                    const centerY = row * yDist;
 
-                    drawHexagon(ctx, x, y, r);
+                    // 只绘制与图片区域有重叠的六边形
+                    if (centerX + r < 0 || centerX - r > displayWidth ||
+                        centerY + r < 0 || centerY - r > displayHeight) {
+                        continue;
+                    }
+
+                    // 计算坐标 - 原点在右下角，第一象限
+                    // 图片右下角为 (0, 0)，向左为 x 轴正方向，向上为 y 轴正方向
+                    // 坐标使用自然尺寸（不是显示尺寸）
+                    const naturalCenterX = centerX / imageScale;
+                    const naturalCenterY = centerY / imageScale;
+                    const coordX = naturalWidth - naturalCenterX;
+                    const coordY = naturalHeight - naturalCenterY;
+
+                    // 保存坐标数据
+                    gridCoordinates.push({
+                        gridId: `${row}_${col}`,
+                        row: row,
+                        col: col,
+                        x: coordX,
+                        y: coordY,
+                        centerXNatural: naturalCenterX,
+                        centerYNatural: naturalCenterY,
+                        hexSizeNatural: hexSize
+                    });
+
+                    // 绘制六边形
+                    drawHexagon(ctx, centerX, centerY, r);
+
+                    // 如果开启了坐标显示，绘制坐标标签
+                    if (coordEnabled) {
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                        ctx.font = `${Math.max(10, r / 3)}px monospace`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const label = `(${Math.round(coordX)}, ${Math.round(coordY)})`;
+                        ctx.fillText(label, centerX, centerY);
+                    }
                 }
             }
         }
