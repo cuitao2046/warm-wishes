@@ -440,8 +440,9 @@
             isSelecting = false;
             isDragging = false;
 
-            // 重置 UI 状态
+            // 重置 UI 状态 - 确保预览容器完全隐藏
             previewContainer.classList.remove('active');
+            previewContainer.style.cssText = '';
             hexGridCanvas.classList.remove('active');
             gridBtn.classList.remove('active');
             coordBtn.classList.remove('active');
@@ -455,8 +456,8 @@
             previewImage.src = '';
             fileInput.value = '';
 
-            // 显示上传区域
-            uploadArea.style.display = 'flex';
+            // 确保上传区域可见
+            uploadArea.style.display = '';
         });
 
         // 导航按钮
