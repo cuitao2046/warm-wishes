@@ -377,7 +377,14 @@
         let coordEnabled = false;
         const hexSize = 120; // 六边形半径
         let gridCoordinates = []; // 存储所有网格的坐标数据
-        let selectedGridId = null; // 当前选中的网格ID
+        let selectedGridIds = new Set(); // 当前选中的网格ID集合（多选）
+
+        // 框选相关变量
+        let isSelecting = false;
+        let selectionStartX = 0;
+        let selectionStartY = 0;
+        let selectionEndX = 0;
+        let selectionEndY = 0;
 
         // 拖拽相关变量
         let isDragging = false;
@@ -452,8 +459,11 @@
         // 导出按钮
         exportBtn.addEventListener('click', exportCoordinates);
 
-        // 网格点击事件 - 选中/取消选中网格
-        hexGridCanvas.addEventListener('click', handleGridClick);
+        // 网格鼠标事件 - 点击和框选
+        hexGridCanvas.addEventListener('mousedown', handleGridMouseDown);
+        hexGridCanvas.addEventListener('mousemove', handleGridMouseMove);
+        hexGridCanvas.addEventListener('mouseup', handleGridMouseUp);
+        hexGridCanvas.addEventListener('mouseleave', handleGridMouseUp);
 
         // 鼠标滚轮缩放
         previewContainer.addEventListener('wheel', (e) => {
@@ -553,7 +563,7 @@
             const file = loadedFiles[index];
 
             // 重置选中状态
-            selectedGridId = null;
+            selectedGridIds.clear();
 
             previewImage.src = file.dataUrl;
             previewInfo.textContent = `${file.name} - ${formatSize(file.size)}`;
@@ -733,7 +743,7 @@
                     const coordY = naturalHeight - naturalCenterY;
 
                     const gridId = `${row}_${col}`;
-                    const isHighlighted = selectedGridId === gridId;
+                    const isHighlighted = selectedGridIds.has(gridId);
 
                     // 保存坐标数据
                     gridCoordinates.push({
@@ -760,6 +770,25 @@
                         ctx.fillText(label, centerX, centerY);
                     }
                 }
+            }
+
+            // 绘制选择框
+            if (isSelecting) {
+                const selLeft = Math.min(selectionStartX, selectionEndX);
+                const selTop = Math.min(selectionStartY, selectionEndY);
+                const selWidth = Math.abs(selectionEndX - selectionStartX);
+                const selHeight = Math.abs(selectionEndY - selectionStartY);
+
+                // 绘制半透明填充
+                ctx.fillStyle = 'rgba(74, 222, 128, 0.15)';
+                ctx.fillRect(selLeft, selTop, selWidth, selHeight);
+
+                // 绘制边框
+                ctx.strokeStyle = 'rgba(74, 222, 128, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(selLeft, selTop, selWidth, selHeight);
+                ctx.setLineDash([]);
             }
         }
 
@@ -805,29 +834,106 @@
             return (size3_2 * dx + size * dy / 2) <= size * size3_2;
         }
 
-        // 处理网格点击
-        function handleGridClick(e) {
+        // 获取网格在画布上的中心坐标
+        function getGridDisplayCenter(grid, imageScale) {
+            const r = hexSize * imageScale;
+            const xDist = r * Math.sqrt(3);
+            const yDist = r * 1.5;
+            return {
+                x: grid.col * xDist + (grid.row % 2 === 1 ? xDist / 2 : 0),
+                y: grid.row * yDist
+            };
+        }
+
+        // 判断网格是否与矩形区域相交（简化的AABB检测）
+        function isGridInRectangle(grid, rectLeft, rectTop, rectRight, rectBottom, imageScale) {
+            const r = hexSize * imageScale;
+            const center = getGridDisplayCenter(grid, imageScale);
+
+            // 使用六边形外接矩形进行AABB检测
+            const hexLeft = center.x - r;
+            const hexRight = center.x + r;
+            const hexTop = center.y - r * Math.sqrt(3) / 2;
+            const hexBottom = center.y + r * Math.sqrt(3) / 2;
+
+            return !(hexRight < rectLeft || hexLeft > rectRight ||
+                     hexBottom < rectTop || hexTop > rectBottom);
+        }
+
+        // 处理网格鼠标按下
+        function handleGridMouseDown(e) {
             if (!gridEnabled) return;
+            if (e.button !== 0) return; // 只处理左键
 
             const rect = hexGridCanvas.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
+            selectionStartX = e.clientX - rect.left;
+            selectionStartY = e.clientY - rect.top;
+            selectionEndX = selectionStartX;
+            selectionEndY = selectionStartY;
+            isSelecting = true;
+
+            // 如果没有按 Ctrl/Cmd，先清空选中
+            if (!e.ctrlKey && !e.metaKey) {
+                selectedGridIds.clear();
+            }
+        }
+
+        // 处理网格鼠标移动
+        function handleGridMouseMove(e) {
+            if (!isSelecting || !gridEnabled) return;
+
+            const rect = hexGridCanvas.getBoundingClientRect();
+            selectionEndX = e.clientX - rect.left;
+            selectionEndY = e.clientY - rect.top;
+
+            drawHexGrid(); // 重绘以显示选择框
+        }
+
+        // 处理网格鼠标抬起
+        function handleGridMouseUp(e) {
+            if (!isSelecting || !gridEnabled) return;
+
+            const rect = hexGridCanvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+
+            const dx = Math.abs(endX - selectionStartX);
+            const dy = Math.abs(endY - selectionStartY);
 
             // 计算缩放和偏移的反向变换
             const displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
             const naturalWidth = previewImage.naturalWidth;
             const imageScale = displayWidth / naturalWidth;
             const r = hexSize * imageScale;
+
+            if (dx < 5 && dy < 5) {
+                // 点击操作（移动距离太小）
+                handleSingleGridClick(endX, endY, imageScale, r, e.ctrlKey || e.metaKey || e.shiftKey);
+            } else {
+                // 框选操作
+                const left = Math.min(selectionStartX, endX);
+                const top = Math.min(selectionStartY, endY);
+                const right = Math.max(selectionStartX, endX);
+                const bottom = Math.max(selectionStartY, endY);
+
+                handleRectangleSelection(left, top, right, bottom, imageScale, e.ctrlKey || e.metaKey || e.shiftKey);
+            }
+
+            isSelecting = false;
+            drawHexGrid(); // 重绘以更新高亮
+        }
+
+        // 处理单个网格点击
+        function handleSingleGridClick(clickX, clickY, imageScale, r, isMultiSelect) {
             const xDist = r * Math.sqrt(3);
             const yDist = r * 1.5;
 
             // 查找点击的网格
             let foundGrid = null;
             for (const grid of gridCoordinates) {
-                const centerX = (grid.col * xDist + (grid.row % 2 === 1 ? xDist / 2 : 0));
-                const centerY = grid.row * yDist;
+                const center = getGridDisplayCenter(grid, imageScale);
 
-                if (isPointInHexagon(clickX, clickY, centerX, centerY, r)) {
+                if (isPointInHexagon(clickX, clickY, center.x, center.y, r)) {
                     foundGrid = grid;
                     break;
                 }
@@ -835,12 +941,34 @@
 
             // 切换选中状态
             if (foundGrid) {
-                if (selectedGridId === foundGrid.gridId) {
-                    selectedGridId = null; // 取消选中
+                if (selectedGridIds.has(foundGrid.gridId)) {
+                    if (isMultiSelect) {
+                        selectedGridIds.delete(foundGrid.gridId); // Ctrl+点击取消选中
+                    } else {
+                        selectedGridIds.clear();
+                        selectedGridIds.add(foundGrid.gridId);
+                    }
                 } else {
-                    selectedGridId = foundGrid.gridId; // 选中新网格
+                    if (!isMultiSelect) {
+                        selectedGridIds.clear();
+                    }
+                    selectedGridIds.add(foundGrid.gridId); // 选中新网格
                 }
-                drawHexGrid(); // 重绘以更新高亮
+            } else if (!isMultiSelect) {
+                selectedGridIds.clear(); // 点击空白处取消全部选中
+            }
+        }
+
+        // 处理矩形框选
+        function handleRectangleSelection(left, top, right, bottom, imageScale, isAdditive) {
+            if (!isAdditive) {
+                selectedGridIds.clear();
+            }
+
+            for (const grid of gridCoordinates) {
+                if (isGridInRectangle(grid, left, top, right, bottom, imageScale)) {
+                    selectedGridIds.add(grid.gridId);
+                }
             }
         }
 
