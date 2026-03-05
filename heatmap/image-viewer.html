@@ -1173,8 +1173,9 @@
             if (e.button !== 0) return; // 只处理左键
 
             const rect = hexGridCanvas.getBoundingClientRect();
-            selectionStartX = e.clientX - rect.left;
-            selectionStartY = e.clientY - rect.top;
+            // 调整鼠标坐标以适应当前缩放级别
+            selectionStartX = (e.clientX - rect.left) / currentZoom;
+            selectionStartY = (e.clientY - rect.top) / currentZoom;
             selectionEndX = selectionStartX;
             selectionEndY = selectionStartY;
             isSelecting = true;
@@ -1190,8 +1191,9 @@
             if (!isSelecting || !gridEnabled) return;
 
             const rect = hexGridCanvas.getBoundingClientRect();
-            selectionEndX = e.clientX - rect.left;
-            selectionEndY = e.clientY - rect.top;
+            // 调整鼠标坐标以适应当前缩放级别
+            selectionEndX = (e.clientX - rect.left) / currentZoom;
+            selectionEndY = (e.clientY - rect.top) / currentZoom;
 
             drawHexGrid(); // 重绘以显示选择框
         }
@@ -1201,11 +1203,12 @@
             if (!isSelecting || !gridEnabled) return;
 
             const rect = hexGridCanvas.getBoundingClientRect();
-            const endX = e.clientX - rect.left;
-            const endY = e.clientY - rect.top;
+            // 调整鼠标坐标以适应当前缩放级别
+            const endX = (e.clientX - rect.left) / currentZoom;
+            const endY = (e.clientY - rect.top) / currentZoom;
 
-            const dx = Math.abs(endX - selectionStartX);
-            const dy = Math.abs(endY - selectionStartY);
+            const dx = Math.abs(endX - selectionStartX) * currentZoom; // 使用缩放后的距离判断
+            const dy = Math.abs(endY - selectionStartY) * currentZoom;
 
             // 计算缩放和偏移的反向变换
             const displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
