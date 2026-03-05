@@ -995,8 +995,8 @@
                 ctx.fillStyle = hexToRgba(currentGridColor, 0.15);
                 ctx.fillRect(selLeft, selTop, selWidth, selHeight);
 
-                // 绘制边框
-                ctx.strokeStyle = hexToRgba(currentGridColor, 0.8);
+                // 绘制边框（黑色）
+                ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
                 ctx.strokeRect(selLeft, selTop, selWidth, selHeight);
@@ -1098,14 +1098,14 @@
             ctx.closePath();
 
             if (hasCustomColor || isHighlighted) {
-                // 有自定义颜色或选中状态：填充+边框
-                ctx.fillStyle = hexToRgba(color, 0.3);
+                // 有自定义颜色或选中状态：填充+黑色边框
+                ctx.fillStyle = hexToRgba(color, 0.8);
                 ctx.fill();
-                ctx.strokeStyle = hexToRgba(color, 1);
+                ctx.strokeStyle = "rgba(0, 0, 0, 1)";
                 ctx.lineWidth = isHighlighted ? 2 : 1;
             } else {
-                // 普通样式：只有边框
-                ctx.strokeStyle = hexToRgba(color, 0.5);
+                // 普通样式：只有黑色边框
+                ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
                 ctx.lineWidth = 1;
             }
             ctx.stroke();
@@ -1240,12 +1240,16 @@
                     } else {
                         selectedGridIds.clear();
                         selectedGridIds.add(foundGrid.gridId);
+                        // 使用当前颜色填充选中的网格
+                        gridColorMap.set(foundGrid.gridId, currentGridColor);
                     }
                 } else {
                     if (!isMultiSelect) {
                         selectedGridIds.clear();
                     }
                     selectedGridIds.add(foundGrid.gridId); // 选中新网格
+                    // 使用当前颜色填充选中的网格
+                    gridColorMap.set(foundGrid.gridId, currentGridColor);
                 }
             } else if (!isMultiSelect) {
                 selectedGridIds.clear(); // 点击空白处取消全部选中
@@ -1261,6 +1265,8 @@
             for (const grid of gridCoordinates) {
                 if (isGridInRectangle(grid, left, top, right, bottom, imageScale)) {
                     selectedGridIds.add(grid.gridId);
+                    // 使用当前颜色填充选中的网格
+                    gridColorMap.set(grid.gridId, currentGridColor);
                 }
             }
         }
