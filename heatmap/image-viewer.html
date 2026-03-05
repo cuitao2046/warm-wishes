@@ -1099,7 +1099,7 @@
 
             if (hasCustomColor || isHighlighted) {
                 // 有自定义颜色或选中状态：填充+黑色边框
-                ctx.fillStyle = hexToRgba(color, 0.3);
+                ctx.fillStyle = hexToRgba(color, 0.8);
                 ctx.fill();
                 ctx.strokeStyle = "rgba(0, 0, 0, 1)";
                 ctx.lineWidth = isHighlighted ? 2 : 1;
