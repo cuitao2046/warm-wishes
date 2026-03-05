@@ -1076,6 +1076,10 @@
             hexSize = parseInt(e.target.value);
             sizeValue.textContent = hexSize;
 
+            // 清空颜色映射和选中状态，因为网格布局改变了
+            gridColorMap.clear();
+            selectedGridIds.clear();
+
             // 如果网格已启用，重新绘制网格
             if (gridEnabled) {
                 drawHexGrid();
