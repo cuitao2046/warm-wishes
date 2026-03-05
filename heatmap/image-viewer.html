@@ -403,7 +403,9 @@
         let gridEnabled = false;
         let coordEnabled = false;
         const hexSize = 120; // 六边形半径
-        let gridColor = '#4ade80'; // 网格颜色
+        let currentGridColor = '#4ade80'; // 当前选中的网格颜色
+        let defaultGridColor = '#4ade80'; // 默认网格颜色
+        let gridColorMap = new Map(); // 网格ID到颜色的映射
         let gridCoordinates = []; // 存储所有网格的坐标数据
         let selectedGridIds = new Set(); // 当前选中的网格ID集合（多选）
 
@@ -463,8 +465,10 @@
             panY = 0;
             gridEnabled = false;
             coordEnabled = false;
-            gridColor = '#4ade80';
-            gridColorPicker.value = gridColor;
+            currentGridColor = '#4ade80';
+            defaultGridColor = '#4ade80';
+            gridColorPicker.value = currentGridColor;
+            gridColorMap.clear();
             selectedGridIds = new Set();
             gridCoordinates = [];
             isSelecting = false;
@@ -812,6 +816,9 @@
                     const gridId = `${row}_${col}`;
                     const isHighlighted = selectedGridIds.has(gridId);
 
+                    // 获取网格颜色，使用颜色映射或默认颜色
+                    const gridColor = gridColorMap.get(gridId) || defaultGridColor;
+
                     // 保存坐标数据
                     gridCoordinates.push({
                         gridId: gridId,
@@ -824,8 +831,8 @@
                         hexSizeNatural: hexSize
                     });
 
-                    // 绘制六边形（带高亮）
-                    drawHexagon(ctx, centerX, centerY, r, isHighlighted);
+                    // 绘制六边形（带高亮和自定义颜色）
+                    drawHexagon(ctx, centerX, centerY, r, isHighlighted, gridColor);
 
                     // 如果开启了坐标显示，绘制坐标标签
                     if (coordEnabled) {
@@ -847,11 +854,11 @@
                 const selHeight = Math.abs(selectionEndY - selectionStartY);
 
                 // 绘制半透明填充
-                ctx.fillStyle = hexToRgba(gridColor, 0.15);
+                ctx.fillStyle = hexToRgba(currentGridColor, 0.15);
                 ctx.fillRect(selLeft, selTop, selWidth, selHeight);
 
                 // 绘制边框
-                ctx.strokeStyle = hexToRgba(gridColor, 0.8);
+                ctx.strokeStyle = hexToRgba(currentGridColor, 0.8);
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
                 ctx.strokeRect(selLeft, selTop, selWidth, selHeight);
@@ -869,13 +876,24 @@
 
         // 处理颜色变化
         function handleColorChange(e) {
-            gridColor = e.target.value;
+            currentGridColor = e.target.value;
+
+            // 如果有选中的网格，只改变选中网格的颜色
+            if (selectedGridIds.size > 0) {
+                for (const gridId of selectedGridIds) {
+                    gridColorMap.set(gridId, currentGridColor);
+                }
+            } else {
+                // 如果没有选中网格，设置为默认颜色（新网格将使用此颜色）
+                defaultGridColor = currentGridColor;
+            }
+
             if (gridEnabled) {
                 drawHexGrid();
             }
         }
 
-        function drawHexagon(ctx, centerX, centerY, size, isHighlighted = false) {
+        function drawHexagon(ctx, centerX, centerY, size, isHighlighted = false, color = defaultGridColor) {
             ctx.beginPath();
             // 六边形顶点，从-30度开始（尖顶朝上）
             for (let i = 0; i < 6; i++) {
@@ -892,13 +910,13 @@
 
             if (isHighlighted) {
                 // 高亮样式：填充+边框
-                ctx.fillStyle = hexToRgba(gridColor, 0.3);
+                ctx.fillStyle = hexToRgba(color, 0.3);
                 ctx.fill();
-                ctx.strokeStyle = hexToRgba(gridColor, 1);
+                ctx.strokeStyle = hexToRgba(color, 1);
                 ctx.lineWidth = 2;
             } else {
                 // 普通样式：只有边框
-                ctx.strokeStyle = hexToRgba(gridColor, 0.5);
+                ctx.strokeStyle = hexToRgba(color, 0.5);
                 ctx.lineWidth = 1;
             }
             ctx.stroke();
