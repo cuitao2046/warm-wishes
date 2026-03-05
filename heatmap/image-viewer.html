@@ -436,6 +436,7 @@
             selectedGridIds.clear();
             gridCoordinates = [];
             isSelecting = false;
+            isDragging = false;
 
             previewContainer.classList.remove('active');
             hexGridCanvas.classList.remove('active');
@@ -443,6 +444,7 @@
             coordBtn.classList.remove('active');
 
             previewImage.src = '';
+            fileInput.value = '';
             uploadArea.style.display = 'flex';
         });
 
