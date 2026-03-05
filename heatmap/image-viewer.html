@@ -443,6 +443,10 @@
             gridBtn.classList.remove('active');
             coordBtn.classList.remove('active');
 
+            // 清除 transform 样式
+            previewImage.style.transform = '';
+            hexGridCanvas.style.transform = '';
+
             previewImage.src = '';
             fileInput.value = '';
             uploadArea.style.display = 'flex';
@@ -579,7 +583,6 @@
             // 重置选中状态
             selectedGridIds.clear();
 
-            previewImage.src = file.dataUrl;
             previewInfo.textContent = `${file.name} - ${formatSize(file.size)}`;
             previewContainer.classList.add('active');
             uploadArea.style.display = 'none';
@@ -587,7 +590,7 @@
             updateCounter();
             updateNavButtons();
 
-            // 图片加载完成后重置缩放并绘制网格
+            // 先设置 onload 处理器，再设置 src
             previewImage.onload = () => {
                 resetZoom();
 
@@ -595,6 +598,8 @@
                     drawHexGrid();
                 }
             };
+
+            previewImage.src = file.dataUrl;
         }
 
         function updateCounter() {
