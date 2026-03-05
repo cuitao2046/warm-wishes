@@ -330,6 +330,70 @@
             border: none;
             border-radius: 2px;
         }
+
+        /* 调色板样式 */
+        .palette-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 15px;
+            padding-left: 15px;
+            border-left: 1px solid #444;
+        }
+
+        .palette-label {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .palette-swatches {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .palette-swatch {
+            width: 36px;
+            height: 36px;
+            border: 2px solid #3a3a3a;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .palette-swatch:hover {
+            border-color: #4ade80;
+            transform: scale(1.1);
+        }
+
+        .palette-swatch.active {
+            border-color: #fff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .palette-swatch::after {
+            content: attr(data-label);
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 4px;
+            padding: 4px 8px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1002;
+        }
+
+        .palette-swatch:hover::after {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -364,6 +428,18 @@
                 <input type="color" id="gridColorPicker" class="color-picker" title="设置网格颜色" value="#4ade80">
                 <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出</button>
             </div>
+            <div class="palette-container">
+                <span class="palette-label">调色板</span>
+                <div class="palette-swatches">
+                    <div class="palette-swatch active" data-color="#4ade80" data-label="森林密集区" style="background-color: #4ade80;"></div>
+                    <div class="palette-swatch" data-color="#ef4444" data-label="森林稀疏区" style="background-color: #ef4444;"></div>
+                    <div class="palette-swatch" data-color="#3b82f6" data-label="水坑" style="background-color: #3b82f6;"></div>
+                    <div class="palette-swatch" data-color="#eab308" data-label="干坑" style="background-color: #eab308;"></div>
+                    <div class="palette-swatch" data-color="#a855f7" data-label="主路" style="background-color: #a855f7;"></div>
+                    <div class="palette-swatch" data-color="#f97316" data-label="小路" style="background-color: #f97316;"></div>
+                    <div class="palette-swatch" data-color="#06b6d4" data-label="盐沼" style="background-color: #06b6d4;"></div>
+                </div>
+            </div>
         </div>
         <div class="image-wrapper" id="imageWrapper">
             <img class="preview-image" id="previewImage" src="" alt="预览图片">
@@ -393,6 +469,7 @@
         const gridColorPicker = document.getElementById('gridColorPicker');
         const imageWrapper = document.getElementById('imageWrapper');
         const hexGridCanvas = document.getElementById('hexGridCanvas');
+        const paletteSwatches = document.querySelectorAll('.palette-swatch');
 
         let loadedFiles = [];
         let currentIndex = -1;
@@ -474,6 +551,9 @@
             isSelecting = false;
             isDragging = false;
 
+            // 重置调色板选中状态
+            updatePaletteActiveState(currentGridColor);
+
             // 重置 UI 状态 - 确保预览容器完全隐藏
             previewContainer.classList.remove('active');
             previewContainer.style.cssText = '';
@@ -520,6 +600,11 @@
         exportBtn.addEventListener('click', exportCoordinates);
         // 颜色选择器
         gridColorPicker.addEventListener('input', handleColorChange);
+
+        // 调色板色块点击事件
+        paletteSwatches.forEach(swatch => {
+            swatch.addEventListener('click', handlePaletteSwatchClick);
+        });
 
         // 网格鼠标事件 - 点击和框选
         hexGridCanvas.addEventListener('mousedown', handleGridMouseDown);
@@ -879,6 +964,9 @@
         function handleColorChange(e) {
             currentGridColor = e.target.value;
 
+            // 更新调色板选中状态
+            updatePaletteActiveState(currentGridColor);
+
             // 如果有选中的网格，只改变选中网格的颜色
             if (selectedGridIds.size > 0) {
                 for (const gridId of selectedGridIds) {
@@ -892,6 +980,44 @@
             if (gridEnabled) {
                 drawHexGrid();
             }
+        }
+
+        // 处理调色板色块点击
+        function handlePaletteSwatchClick(e) {
+            const swatch = e.target;
+            const color = swatch.dataset.color;
+
+            // 更新当前选中颜色
+            currentGridColor = color;
+            gridColorPicker.value = color;
+
+            // 更新调色板选中状态
+            updatePaletteActiveState(color);
+
+            // 如果有选中的网格，填充选中的网格
+            if (selectedGridIds.size > 0) {
+                for (const gridId of selectedGridIds) {
+                    gridColorMap.set(gridId, color);
+                }
+            } else {
+                // 如果没有选中网格，设置为默认颜色
+                defaultGridColor = color;
+            }
+
+            if (gridEnabled) {
+                drawHexGrid();
+            }
+        }
+
+        // 更新调色板选中状态
+        function updatePaletteActiveState(selectedColor) {
+            paletteSwatches.forEach(swatch => {
+                if (swatch.dataset.color.toLowerCase() === selectedColor.toLowerCase()) {
+                    swatch.classList.add('active');
+                } else {
+                    swatch.classList.remove('active');
+                }
+            });
         }
 
         function drawHexagon(ctx, centerX, centerY, size, isHighlighted = false, color = defaultGridColor, hasCustomColor = false) {
