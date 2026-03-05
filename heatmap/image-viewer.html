@@ -98,6 +98,8 @@
         }
 
         .preview-image {
+            max-width: 95vw;
+            max-height: calc(100vh - 120px);
             object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
@@ -119,8 +121,6 @@
             border-radius: 8px;
             overflow: hidden;
             display: none;
-            max-width: 95vw;
-            max-height: calc(100vh - 120px);
             transform-origin: 0 0;
             transition: transform 0.1s ease-out;
         }
@@ -328,7 +328,6 @@
 
         let loadedFiles = [];
         let currentIndex = -1;
-        let initialFitZoom = 1.0; // 图片初始适应屏幕的缩放比例
         let currentZoom = 1.0;
         const zoomStep = 0.25;
         const minZoom = 0.1;
@@ -510,18 +509,8 @@
             updateCounter();
             updateNavButtons();
 
-            // 图片加载完成后计算初始缩放并绘制网格
+            // 图片加载完成后重置缩放并绘制网格
             previewImage.onload = () => {
-                // 计算图片适应屏幕的初始缩放比例
-                const naturalWidth = previewImage.naturalWidth;
-                const naturalHeight = previewImage.naturalHeight;
-                const maxWidth = window.innerWidth * 0.95;
-                const maxHeight = window.innerHeight - 120;
-
-                const scaleX = maxWidth / naturalWidth;
-                const scaleY = maxHeight / naturalHeight;
-                initialFitZoom = Math.min(scaleX, scaleY, 1.0);
-
                 resetZoom();
 
                 if (gridEnabled) {
@@ -575,13 +564,11 @@
         }
 
         function updateZoomDisplay() {
-            const totalZoom = initialFitZoom * currentZoom;
-            zoomDisplay.textContent = Math.round(totalZoom * 100) + '%';
+            zoomDisplay.textContent = Math.round(currentZoom * 100) + '%';
         }
 
         function applyTransform() {
-            const totalZoom = initialFitZoom * currentZoom;
-            const transform = `translate(${panX}px, ${panY}px) scale(${totalZoom})`;
+            const transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
             previewImage.style.transform = transform;
             hexGridCanvas.style.transform = transform;
         }
@@ -606,6 +593,8 @@
         function drawHexGrid() {
             const naturalWidth = previewImage.naturalWidth;
             const naturalHeight = previewImage.naturalHeight;
+            const displayWidth = previewImage.offsetWidth;
+            const displayHeight = previewImage.offsetHeight;
 
             if (naturalWidth === 0 || naturalHeight === 0) return;
 
@@ -613,12 +602,15 @@
             hexGridCanvas.width = naturalWidth;
             hexGridCanvas.height = naturalHeight;
 
-            // 清除 Canvas 的 style 尺寸，让它使用自然尺寸
-            hexGridCanvas.style.width = '';
-            hexGridCanvas.style.height = '';
+            // 设置 Canvas 的显示尺寸匹配图片的显示尺寸
+            hexGridCanvas.style.width = displayWidth + 'px';
+            hexGridCanvas.style.height = displayHeight + 'px';
 
             const ctx = hexGridCanvas.getContext('2d');
             ctx.clearRect(0, 0, naturalWidth, naturalHeight);
+
+            // 缩放上下文以匹配自然尺寸到显示尺寸的比例
+            ctx.scale(displayWidth / naturalWidth, displayHeight / naturalHeight);
 
             // 设置六边形样式
             ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
