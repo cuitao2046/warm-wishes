@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地图片查看器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #2a2a2a;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #4ade80;
+        }
+
+        .upload-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            border: 3px dashed #444;
+            margin: 20px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #4ade80;
+            background: #1f291f;
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #4ade80;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .preview-container.active {
+            display: flex;
+        }
+
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .preview-image {
+            max-width: 95vw;
+            max-height: calc(100vh - 120px);
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.1s ease-out;
+            transform-origin: 0 0;
+            display: block;
+            cursor: grab;
+        }
+
+        .preview-image:active {
+            cursor: grabbing;
+        }
+
+        .hex-grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: auto;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
+        }
+
+        .hex-grid-overlay.active {
+            display: block;
+        }
+
+        .preview-info {
+            margin-top: 15px;
+            text-align: center;
+            color: #888;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: rgba(42, 42, 42, 0.9);
+            padding: 10px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-btn {
+            background: #4ade80;
+            color: #1a1a1a;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+        }
+
+        .control-btn:hover {
+            opacity: 0.8;
+        }
+
+        .control-btn.active {
+            background: #4ade80;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        }
+
+        .nav-btn {
+            background: #2a2a2a;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: #3a3a3a;
+        }
+
+        .nav-btn:disabled {
+            color: #444;
+            cursor: not-allowed;
+        }
+
+        .counter {
+            color: #888;
+            font-size: 0.9rem;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 15px;
+            padding-left: 15px;
+            border-left: 1px solid #444;
+        }
+
+        .zoom-display {
+            color: #fff;
+            font-size: 0.85rem;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .zoom-btn {
+            background: #3a3a3a;
+            color: #fff;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #4a4a4a;
+        }
+
+        .zoom-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .grid-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 15px;
+            padding-left: 15px;
+            border-left: 1px solid #444;
+        }
+
+        .grid-btn {
+            background: #3a3a3a;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .grid-btn:hover {
+            background: #4a4a4a;
+        }
+
+        .grid-btn.active {
+            background: #4ade80;
+            color: #1a1a1a;
+        }
+
+        .coord-btn {
+            background: #3a3a3a;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .coord-btn:hover {
+            background: #4a4a4a;
+        }
+
+        .coord-btn.active {
+            background: #4ade80;
+            color: #1a1a1a;
+        }
+
+        .export-btn {
+            background: #60a5fa;
+            color: #1a1a1a;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .export-btn:hover {
+            background: #93c5fd;
+        }
+
+        .selected-info {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(42, 42, 42, 0.95);
+            padding: 12px 24px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+            color: #fff;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .selected-info.active {
+            display: block;
+        }
+
+        .selected-info .coord {
+            color: #4ade80;
+            font-weight: 600;
+        }
+
+        .selected-info .grid-id {
+            color: #60a5fa;
+            margin-left: 10px;
+        }
+
+        .clear-btn {
+            background: #f87171;
+            color: #fff;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 15px;
+            transition: background 0.3s ease;
+        }
+
+        .clear-btn:hover {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📷 本地图片查看器</h1>
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">点击选择图片或拖放图片到这里</div>
+        <div class="upload-hint">支持 JPG、PNG、GIF、WEBP 等格式</div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" multiple>
+
+    <div class="preview-container" id="previewContainer">
+        <div class="controls">
+            <button class="nav-btn" id="prevBtn" disabled>◀</button>
+            <span class="counter" id="counter">0 / 0</span>
+            <button class="nav-btn" id="nextBtn" disabled>▶</button>
+            <button class="control-btn" id="uploadMoreBtn">📁 添加更多</button>
+            <button class="control-btn" id="resetBtn">🔄 重置</button>
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoomOutBtn" title="缩小">−</button>
+                <span class="zoom-display" id="zoomDisplay">100%</span>
+                <button class="zoom-btn" id="zoomInBtn" title="放大">+</button>
+                <button class="zoom-btn" id="zoomResetBtn" title="重置缩放">1:1</button>
+            </div>
+            <div class="grid-controls">
+                <button class="grid-btn" id="gridBtn" title="显示/隐藏网格">⬡ 网格化</button>
+                <button class="coord-btn" id="coordBtn" title="显示/隐藏坐标">📍 坐标</button>
+                <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出</button>
+            </div>
+        </div>
+        <div class="image-wrapper" id="imageWrapper">
+            <img class="preview-image" id="previewImage" src="" alt="预览图片">
+            <canvas class="hex-grid-overlay" id="hexGridCanvas"></canvas>
+        </div>
+        <div class="preview-info" id="previewInfo"></div>
+        <div class="selected-info" id="selectedInfo">
+            已选中: <span class="coord" id="selectedCoord"></span>
+            <span class="grid-id" id="selectedGridId"></span>
+            <button class="clear-btn" id="clearBtn">取消选中</button>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const previewInfo = document.getElementById('previewInfo');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const uploadMoreBtn = document.getElementById('uploadMoreBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const counter = document.getElementById('counter');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomResetBtn = document.getElementById('zoomResetBtn');
+        const zoomDisplay = document.getElementById('zoomDisplay');
+        const gridBtn = document.getElementById('gridBtn');
+        const coordBtn = document.getElementById('coordBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const imageWrapper = document.getElementById('imageWrapper');
+        const hexGridCanvas = document.getElementById('hexGridCanvas');
+        const selectedInfo = document.getElementById('selectedInfo');
+        const selectedCoord = document.getElementById('selectedCoord');
+        const selectedGridId = document.getElementById('selectedGridId');
+        const clearBtn = document.getElementById('clearBtn');
+
+        let loadedFiles = [];
+        let currentIndex = -1;
+        let currentZoom = 1.0;
+        const zoomStep = 0.25;
+        const minZoom = 0.1;
+        const maxZoom = 10.0;
+        let gridEnabled = false;
+        let coordEnabled = false;
+        const hexSize = 120;
+        let gridCoordinates = [];
+
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let panX = 0;
+        let panY = 0;
+
+        let selectedGrid = null;
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        uploadMoreBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            fileInput.click();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            loadedFiles = [];
+            currentIndex = -1;
+            selectedGrid = null;
+            selectedInfo.classList.remove('active');
+            previewContainer.classList.remove('active');
+            previewImage.src = '';
+            uploadArea.style.display = 'flex';
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                showPreview(currentIndex - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentIndex < loadedFiles.length - 1) {
+                showPreview(currentIndex + 1);
+            }
+        });
+
+        zoomOutBtn.addEventListener('click', zoomOut);
+        zoomInBtn.addEventListener('click', zoomIn);
+        zoomResetBtn.addEventListener('click', resetZoom);
+
+        gridBtn.addEventListener('click', toggleGrid);
+        coordBtn.addEventListener('click', toggleCoord);
+        exportBtn.addEventListener('click', exportCoordinates);
+        clearBtn.addEventListener('click', clearSelection);
+
+        previewContainer.addEventListener('wheel', (e) => {
+            if (!previewContainer.classList.contains('active')) return;
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
+            }
+        });
+
+        imageWrapper.addEventListener('mousedown', (e) => {
+            if (!previewContainer.classList.contains('active')) return;
+            if (e.button !== 0) return;
+            if (e.target !== previewImage && e.target !== hexGridCanvas) return;
+
+            if (gridEnabled && e.target === hexGridCanvas) {
+                const rect = hexGridCanvas.getBoundingClientRect();
+                const clickX = (e.clientX - rect.left - panX) / currentZoom;
+                const clickY = (e.clientY - rect.top - panY) / currentZoom;
+
+                const clickedGrid = findGridAtPosition(clickX, clickY);
+                if (clickedGrid) {
+                    if (selectedGrid && selectedGrid.gridId === clickedGrid.gridId) {
+                        clearSelection();
+                    } else {
+                        selectGrid(clickedGrid);
+                    }
+                    drawHexGrid();
+                    return;
+                }
+            }
+
+            if (currentZoom <= 1.0) return;
+
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            e.preventDefault();
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            applyTransform();
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!previewContainer.classList.contains('active')) return;
+
+            if (e.key === 'ArrowLeft' && currentIndex > 0) {
+                showPreview(currentIndex - 1);
+            } else if (e.key === 'ArrowRight' && currentIndex < loadedFiles.length - 1) {
+                showPreview(currentIndex + 1);
+            } else if (e.key === '+' || e.key === '=') {
+                zoomIn();
+            } else if (e.key === '-' || e.key === '_') {
+                zoomOut();
+            } else if (e.key === '0') {
+                resetZoom();
+            } else if (e.key === 'g' || e.key === 'G') {
+                toggleGrid();
+            } else if (e.key === 'Escape') {
+                clearSelection();
+                drawHexGrid();
+            }
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const fileData = {
+                            name: file.name,
+                            size: file.size,
+                            dataUrl: e.target.result
+                        };
+                        loadedFiles.push(fileData);
+
+                        if (loadedFiles.length === 1) {
+                            showPreview(0);
+                        } else {
+                            updateCounter();
+                            updateNavButtons();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    alert(`"${file.name}" 不是图片文件`);
+                }
+            });
+        }
+
+        function showPreview(index) {
+            if (index < 0 || index >= loadedFiles.length) return;
+
+            currentIndex = index;
+            const file = loadedFiles[index];
+
+            previewImage.src = file.dataUrl;
+            previewInfo.textContent = `${file.name} - ${formatSize(file.size)}`;
+            previewContainer.classList.add('active');
+            uploadArea.style.display = 'none';
+
+            updateCounter();
+            updateNavButtons();
+
+            selectedGrid = null;
+            selectedInfo.classList.remove('active');
+
+            previewImage.onload = () => {
+                resetZoom();
+
+                if (gridEnabled) {
+                    drawHexGrid();
+                }
+            };
+        }
+
+        function updateCounter() {
+            counter.textContent = `${currentIndex + 1} / ${loadedFiles.length}`;
+        }
+
+        function updateNavButtons() {
+            prevBtn.disabled = currentIndex <= 0;
+            nextBtn.disabled = currentIndex >= loadedFiles.length - 1;
+        }
+
+        function zoomIn() {
+            if (currentZoom < maxZoom) {
+                currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
+                applyTransform();
+                updateZoomDisplay();
+                updateZoomButtons();
+            }
+        }
+
+        function zoomOut() {
+            if (currentZoom > minZoom) {
+                currentZoom = Math.max(currentZoom - zoomStep, minZoom);
+                if (currentZoom <= 1.0) {
+                    resetPan();
+                }
+                applyTransform();
+                updateZoomDisplay();
+                updateZoomButtons();
+            }
+        }
+
+        function resetZoom() {
+            currentZoom = 1.0;
+            resetPan();
+            applyTransform();
+            updateZoomDisplay();
+            updateZoomButtons();
+        }
+
+        function resetPan() {
+            panX = 0;
+            panY = 0;
+        }
+
+        function updateZoomDisplay() {
+            zoomDisplay.textContent = Math.round(currentZoom * 100) + '%';
+        }
+
+        function applyTransform() {
+            const transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
+            previewImage.style.transform = transform;
+            hexGridCanvas.style.transform = transform;
+        }
+
+        function updateZoomButtons() {
+            zoomOutBtn.disabled = currentZoom <= minZoom;
+            zoomInBtn.disabled = currentZoom >= maxZoom;
+        }
+
+        function toggleGrid() {
+            gridEnabled = !gridEnabled;
+            gridBtn.classList.toggle('active', gridEnabled);
+
+            if (gridEnabled) {
+                hexGridCanvas.classList.add('active');
+                drawHexGrid();
+            } else {
+                hexGridCanvas.classList.remove('active');
+                selectedGrid = null;
+                selectedInfo.classList.remove('active');
+            }
+        }
+
+        function toggleCoord() {
+            coordEnabled = !coordEnabled;
+            coordBtn.classList.toggle('active', coordEnabled);
+
+            if (gridEnabled) {
+                drawHexGrid();
+            }
+        }
+
+        function exportCoordinates() {
+            if (gridCoordinates.length === 0) {
+                alert('请先开启网格化以生成坐标数据');
+                return;
+            }
+
+            const exportData = {
+                selectedGrid: selectedGrid,
+                allGrids: gridCoordinates
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'grid-coordinates.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function selectGrid(grid) {
+            selectedGrid = grid;
+            selectedCoord.textContent = `(${Math.round(grid.x)}, ${Math.round(grid.y)})`;
+            selectedGridId.textContent = `[${grid.gridId}]`;
+            selectedInfo.classList.add('active');
+        }
+
+        function clearSelection() {
+            selectedGrid = null;
+            selectedInfo.classList.remove('active');
+            if (gridEnabled) {
+                drawHexGrid();
+            }
+        }
+
+        function findGridAtPosition(clickX, clickY) {
+            let displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
+            let displayHeight = previewImage.offsetHeight || previewImage.clientHeight;
+            const naturalWidth = previewImage.naturalWidth;
+            const naturalHeight = previewImage.naturalHeight;
+
+            if (displayWidth === 0 || displayHeight === 0) {
+                const maxWidth = window.innerWidth * 0.95;
+                const maxHeight = window.innerHeight - 120;
+                const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight, 1.0);
+                displayWidth = naturalWidth * scale;
+                displayHeight = naturalHeight * scale;
+            }
+
+            const imageScale = displayWidth / naturalWidth;
+            const r = hexSize * imageScale;
+            const xDist = r * Math.sqrt(3);
+            const yDist = r * 1.5;
+
+            const col = Math.floor(clickX / xDist);
+            const row = Math.floor(clickY / yDist);
+
+            for (let testRow = row - 1; testRow <= row + 1; testRow++) {
+                for (let testCol = col - 1; testCol <= col + 1; testCol++) {
+                    const centerX = testCol * xDist + (testRow % 2 === 1 ? xDist / 2 : 0);
+                    const centerY = testRow * yDist;
+
+                    if (isPointInHexagon(clickX, clickY, centerX, centerY, r)) {
+                        const naturalCenterX = centerX / imageScale;
+                        const naturalCenterY = centerY / imageScale;
+                        const coordX = naturalWidth - naturalCenterX;
+                        const coordY = naturalHeight - naturalCenterY;
+
+                        return {
+                            gridId: `${testRow}_${testCol}`,
+                            row: testRow,
+                            col: testCol,
+                            x: coordX,
+                            y: coordY,
+                            centerXNatural: naturalCenterX,
+                            centerYNatural: naturalCenterY,
+                            hexSizeNatural: hexSize
+                        };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        function isPointInHexagon(px, py, cx, cy, size) {
+            const dx = Math.abs(px - cx);
+            const dy = Math.abs(py - cy);
+
+            if (dx > size || dy > size * Math.sqrt(3) / 2) {
+                return false;
+            }
+
+            return size * Math.sqrt(3) / 2 * size >= size / 2 * dy + (Math.sqrt(3) / 2) * dx * size;
+        }
+
+        function drawHexGrid() {
+            gridCoordinates = [];
+
+            let displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
+            let displayHeight = previewImage.offsetHeight || previewImage.clientHeight;
+            const naturalWidth = previewImage.naturalWidth;
+            const naturalHeight = previewImage.naturalHeight;
+
+            if (displayWidth === 0 || displayHeight === 0) {
+                const maxWidth = window.innerWidth * 0.95;
+                const maxHeight = window.innerHeight - 120;
+                const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight, 1.0);
+                displayWidth = naturalWidth * scale;
+                displayHeight = naturalHeight * scale;
+            }
+
+            if (displayWidth === 0 || displayHeight === 0) return;
+
+            hexGridCanvas.width = displayWidth;
+            hexGridCanvas.height = displayHeight;
+            hexGridCanvas.style.width = displayWidth + 'px';
+            hexGridCanvas.style.height = displayHeight + 'px';
+
+            const ctx = hexGridCanvas.getContext('2d');
+            ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+            const imageScale = displayWidth / naturalWidth;
+            const r = hexSize * imageScale;
+            const xDist = r * Math.sqrt(3);
+            const yDist = r * 1.5;
+
+            const cols = Math.ceil(displayWidth / xDist) + 2;
+            const rows = Math.ceil(displayHeight / yDist) + 2;
+
+            for (let row = -1; row < rows; row++) {
+                for (let col = -1; col < cols; col++) {
+                    const centerX = col * xDist + (row % 2 === 1 ? xDist / 2 : 0);
+                    const centerY = row * yDist;
+
+                    if (centerX + r < 0 || centerX - r > displayWidth ||
+                        centerY + r < 0 || centerY - r > displayHeight) {
+                        continue;
+                    }
+
+                    const naturalCenterX = centerX / imageScale;
+                    const naturalCenterY = centerY / imageScale;
+                    const coordX = naturalWidth - naturalCenterX;
+                    const coordY = naturalHeight - naturalCenterY;
+
+                    const gridData = {
+                        gridId: `${row}_${col}`,
+                        row: row,
+                        col: col,
+                        x: coordX,
+                        y: coordY,
+                        centerXNatural: naturalCenterX,
+                        centerYNatural: naturalCenterY,
+                        hexSizeNatural: hexSize
+                    };
+
+                    gridCoordinates.push(gridData);
+
+                    const isSelected = selectedGrid && selectedGrid.gridId === gridData.gridId;
+
+                    if (isSelected) {
+                        ctx.fillStyle = 'rgba(74, 222, 128, 0.3)';
+                        ctx.beginPath();
+                        for (let i = 0; i < 6; i++) {
+                            const angle = (Math.PI / 3) * i - Math.PI / 6;
+                            const x = centerX + r * Math.cos(angle);
+                            const y = centerY + r * Math.sin(angle);
+                            if (i === 0) {
+                                ctx.moveTo(x, y);
+                            } else {
+                                ctx.lineTo(x, y);
+                            }
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+
+                        ctx.strokeStyle = 'rgba(74, 222, 128, 1)';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    } else {
+                        ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
+                        ctx.lineWidth = 1;
+                        drawHexagon(ctx, centerX, centerY, r);
+                    }
+
+                    if (coordEnabled) {
+                        ctx.fillStyle = isSelected ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.9)';
+                        ctx.font = `${Math.max(10, r / 3)}px monospace`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const label = `(${Math.round(coordX)}, ${Math.round(coordY)})`;
+                        ctx.fillText(label, centerX, centerY);
+                    }
+                }
+            }
+        }
+
+        function drawHexagon(ctx, centerX, centerY, size) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 3) * i - Math.PI / 6;
+                const x = centerX + size * Math.cos(angle);
+                const y = centerY + size * Math.sin(angle);
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+    </script>
+</body>
+</html>
