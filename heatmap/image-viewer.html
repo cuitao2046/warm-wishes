@@ -429,7 +429,19 @@
         resetBtn.addEventListener('click', () => {
             loadedFiles = [];
             currentIndex = -1;
+            currentZoom = 1.0;
+            resetPan();
+            gridEnabled = false;
+            coordEnabled = false;
+            selectedGridIds.clear();
+            gridCoordinates = [];
+            isSelecting = false;
+
             previewContainer.classList.remove('active');
+            hexGridCanvas.classList.remove('active');
+            gridBtn.classList.remove('active');
+            coordBtn.classList.remove('active');
+
             previewImage.src = '';
             uploadArea.style.display = 'flex';
         });
