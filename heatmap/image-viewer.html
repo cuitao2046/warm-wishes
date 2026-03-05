@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地图片查看器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #2a2a2a;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #4ade80;
+        }
+
+        .upload-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            border: 3px dashed #444;
+            margin: 20px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #4ade80;
+            background: #1f291f;
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #4ade80;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .preview-container.active {
+            display: flex;
+        }
+
+        .preview-image {
+            max-width: 95%;
+            max-height: calc(100vh - 120px);
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .preview-info {
+            margin-top: 15px;
+            text-align: center;
+            color: #888;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: rgba(42, 42, 42, 0.9);
+            padding: 10px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn {
+            background: #4ade80;
+            color: #1a1a1a;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+        }
+
+        .control-btn:hover {
+            opacity: 0.8;
+        }
+
+        .nav-btn {
+            background: #2a2a2a;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: #3a3a3a;
+        }
+
+        .nav-btn:disabled {
+            color: #444;
+            cursor: not-allowed;
+        }
+
+        .counter {
+            color: #888;
+            font-size: 0.9rem;
+            min-width: 60px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📷 本地图片查看器</h1>
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">点击选择图片或拖放图片到这里</div>
+        <div class="upload-hint">支持 JPG、PNG、GIF、WEBP 等格式</div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" multiple>
+
+    <div class="preview-container" id="previewContainer">
+        <div class="controls">
+            <button class="nav-btn" id="prevBtn" disabled>◀</button>
+            <span class="counter" id="counter">0 / 0</span>
+            <button class="nav-btn" id="nextBtn" disabled>▶</button>
+            <button class="control-btn" id="uploadMoreBtn">📁 添加更多</button>
+            <button class="control-btn" id="resetBtn">🔄 重置</button>
+        </div>
+        <img class="preview-image" id="previewImage" src="" alt="预览图片">
+        <div class="preview-info" id="previewInfo"></div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const previewInfo = document.getElementById('previewInfo');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const uploadMoreBtn = document.getElementById('uploadMoreBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const counter = document.getElementById('counter');
+
+        let loadedFiles = [];
+        let currentIndex = -1;
+
+        // 点击上传区域触发文件选择
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 文件选择处理
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        // 拖放处理
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        // 添加更多按钮
+        uploadMoreBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            fileInput.click();
+        });
+
+        // 重置按钮
+        resetBtn.addEventListener('click', () => {
+            loadedFiles = [];
+            currentIndex = -1;
+            previewContainer.classList.remove('active');
+            previewImage.src = '';
+            uploadArea.style.display = 'flex';
+        });
+
+        // 导航按钮
+        prevBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                showPreview(currentIndex - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentIndex < loadedFiles.length - 1) {
+                showPreview(currentIndex + 1);
+            }
+        });
+
+        // 键盘导航
+        document.addEventListener('keydown', (e) => {
+            if (!previewContainer.classList.contains('active')) return;
+
+            if (e.key === 'ArrowLeft' && currentIndex > 0) {
+                showPreview(currentIndex - 1);
+            } else if (e.key === 'ArrowRight' && currentIndex < loadedFiles.length - 1) {
+                showPreview(currentIndex + 1);
+            }
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const fileData = {
+                            name: file.name,
+                            size: file.size,
+                            dataUrl: e.target.result
+                        };
+                        loadedFiles.push(fileData);
+
+                        // 如果是第一张图片，直接显示
+                        if (loadedFiles.length === 1) {
+                            showPreview(0);
+                        } else {
+                            updateCounter();
+                            updateNavButtons();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    alert(`"${file.name}" 不是图片文件`);
+                }
+            });
+        }
+
+        function showPreview(index) {
+            if (index < 0 || index >= loadedFiles.length) return;
+
+            currentIndex = index;
+            const file = loadedFiles[index];
+
+            previewImage.src = file.dataUrl;
+            previewInfo.textContent = `${file.name} - ${formatSize(file.size)}`;
+            previewContainer.classList.add('active');
+            uploadArea.style.display = 'none';
+
+            updateCounter();
+            updateNavButtons();
+        }
+
+        function updateCounter() {
+            counter.textContent = `${currentIndex + 1} / ${loadedFiles.length}`;
+        }
+
+        function updateNavButtons() {
+            prevBtn.disabled = currentIndex <= 0;
+            nextBtn.disabled = currentIndex >= loadedFiles.length - 1;
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+    </script>
+</body>
+</html>
