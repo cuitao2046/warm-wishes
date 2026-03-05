@@ -117,12 +117,13 @@
             position: absolute;
             top: 0;
             left: 0;
-            pointer-events: none;
+            pointer-events: auto;
             border-radius: 8px;
             overflow: hidden;
             display: none;
             transform-origin: 0 0;
             transition: transform 0.1s ease-out;
+            cursor: crosshair;
         }
 
         .hex-grid-overlay.active {
@@ -376,6 +377,7 @@
         let coordEnabled = false;
         const hexSize = 120; // 六边形半径
         let gridCoordinates = []; // 存储所有网格的坐标数据
+        let selectedGridId = null; // 当前选中的网格ID
 
         // 拖拽相关变量
         let isDragging = false;
@@ -450,6 +452,9 @@
         // 导出按钮
         exportBtn.addEventListener('click', exportCoordinates);
 
+        // 网格点击事件 - 选中/取消选中网格
+        hexGridCanvas.addEventListener('click', handleGridClick);
+
         // 鼠标滚轮缩放
         previewContainer.addEventListener('wheel', (e) => {
             if (!previewContainer.classList.contains('active')) return;
@@ -470,8 +475,8 @@
             if (e.button !== 0) return;
             // 只在缩放大于1时允许拖拽
             if (currentZoom <= 1.0) return;
-            // 只在图片上点击时才允许拖拽
-            if (e.target !== previewImage && e.target !== hexGridCanvas) return;
+            // 只在图片上点击时才允许拖拽（网格层点击用于选择网格）
+            if (e.target !== previewImage) return;
 
             isDragging = true;
             startX = e.clientX - panX;
@@ -546,6 +551,9 @@
 
             currentIndex = index;
             const file = loadedFiles[index];
+
+            // 重置选中状态
+            selectedGridId = null;
 
             previewImage.src = file.dataUrl;
             previewInfo.textContent = `${file.name} - ${formatSize(file.size)}`;
@@ -704,10 +712,6 @@
             const cols = Math.ceil(displayWidth / xDist) + 2;
             const rows = Math.ceil(displayHeight / yDist) + 2;
 
-            // 设置六边形样式
-            ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
-            ctx.lineWidth = 1;
-
             for (let row = -1; row < rows; row++) {
                 for (let col = -1; col < cols; col++) {
                     // 奇数行向右偏移一半水平间距
@@ -728,9 +732,12 @@
                     const coordX = naturalWidth - naturalCenterX;
                     const coordY = naturalHeight - naturalCenterY;
 
+                    const gridId = `${row}_${col}`;
+                    const isHighlighted = selectedGridId === gridId;
+
                     // 保存坐标数据
                     gridCoordinates.push({
-                        gridId: `${row}_${col}`,
+                        gridId: gridId,
                         row: row,
                         col: col,
                         x: coordX,
@@ -740,12 +747,12 @@
                         hexSizeNatural: hexSize
                     });
 
-                    // 绘制六边形
-                    drawHexagon(ctx, centerX, centerY, r);
+                    // 绘制六边形（带高亮）
+                    drawHexagon(ctx, centerX, centerY, r, isHighlighted);
 
                     // 如果开启了坐标显示，绘制坐标标签
                     if (coordEnabled) {
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                        ctx.fillStyle = isHighlighted ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.9)';
                         ctx.font = `${Math.max(10, r / 3)}px monospace`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
@@ -756,7 +763,7 @@
             }
         }
 
-        function drawHexagon(ctx, centerX, centerY, size) {
+        function drawHexagon(ctx, centerX, centerY, size, isHighlighted = false) {
             ctx.beginPath();
             // 六边形顶点，从-30度开始（尖顶朝上）
             for (let i = 0; i < 6; i++) {
@@ -770,7 +777,71 @@
                 }
             }
             ctx.closePath();
+
+            if (isHighlighted) {
+                // 高亮样式：填充+边框
+                ctx.fillStyle = 'rgba(74, 222, 128, 0.3)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(74, 222, 128, 1)';
+                ctx.lineWidth = 2;
+            } else {
+                // 普通样式：只有边框
+                ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
+                ctx.lineWidth = 1;
+            }
             ctx.stroke();
+        }
+
+        // 判断点是否在六边形内
+        function isPointInHexagon(px, py, centerX, centerY, size) {
+            const dx = Math.abs(px - centerX);
+            const dy = Math.abs(py - centerY);
+            const size3_2 = size * Math.sqrt(3) / 2;
+
+            // 快速排除
+            if (dx > size || dy > size3_2) return false;
+
+            // 六边形内判断
+            return (size3_2 * dx + size * dy / 2) <= size * size3_2;
+        }
+
+        // 处理网格点击
+        function handleGridClick(e) {
+            if (!gridEnabled) return;
+
+            const rect = hexGridCanvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // 计算缩放和偏移的反向变换
+            const displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
+            const naturalWidth = previewImage.naturalWidth;
+            const imageScale = displayWidth / naturalWidth;
+            const r = hexSize * imageScale;
+            const xDist = r * Math.sqrt(3);
+            const yDist = r * 1.5;
+
+            // 查找点击的网格
+            let foundGrid = null;
+            for (const grid of gridCoordinates) {
+                const centerX = (grid.col * xDist + (grid.row % 2 === 1 ? xDist / 2 : 0));
+                const centerY = grid.row * yDist;
+
+                if (isPointInHexagon(clickX, clickY, centerX, centerY, r)) {
+                    foundGrid = grid;
+                    break;
+                }
+            }
+
+            // 切换选中状态
+            if (foundGrid) {
+                if (selectedGridId === foundGrid.gridId) {
+                    selectedGridId = null; // 取消选中
+                } else {
+                    selectedGridId = foundGrid.gridId; // 选中新网格
+                }
+                drawHexGrid(); // 重绘以更新高亮
+            }
         }
 
         function formatSize(bytes) {
