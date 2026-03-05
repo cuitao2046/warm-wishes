@@ -588,18 +588,18 @@
         }
 
         function drawHexGrid() {
-            const width = previewImage.width;
-            const height = previewImage.height;
+            const naturalWidth = previewImage.naturalWidth;
+            const naturalHeight = previewImage.naturalHeight;
 
-            if (width === 0 || height === 0) return;
+            if (naturalWidth === 0 || naturalHeight === 0) return;
 
-            hexGridCanvas.width = width;
-            hexGridCanvas.height = height;
-            hexGridCanvas.style.width = previewImage.style.width || previewImage.offsetWidth + 'px';
+            hexGridCanvas.naturalWidth = naturalWidth;
+            hexGridCanvas.naturalHeight = height;
+            hexGridCanvas.style.naturalWidth = previewImage.style.naturalWidth || previewImage.offsetWidth + 'px';
             hexGridCanvas.style.height = previewImage.style.height || previewImage.offsetHeight + 'px';
 
             const ctx = hexGridCanvas.getContext('2d');
-            ctx.clearRect(0, 0, width, height);
+            ctx.clearRect(0, 0, naturalWidth, height);
 
             // 设置六边形样式
             ctx.strokeStyle = 'rgba(74, 222, 128, 0.5)';
@@ -611,8 +611,8 @@
             const yDist = r * 1.5; // 垂直间距
 
             // 绘制六边形网格
-            const cols = Math.ceil(width / xDist) + 2;
-            const rows = Math.ceil(height / yDist) + 2;
+            const cols = Math.ceil(naturalWidth / xDist) + 2;
+            const rows = Math.ceil(naturalHeight / yDist) + 2;
 
             for (let row = -1; row < rows; row++) {
                 for (let col = -1; col < cols; col++) {
