@@ -928,14 +928,6 @@
                 return;
             }
 
-            // 只导出有填充颜色的网格
-            const coloredGrids = gridCoordinates.filter(grid => gridColorMap.has(grid.gridId));
-
-            if (coloredGrids.length === 0) {
-                alert('没有填充颜色的网格需要导出');
-                return;
-            }
-
             const naturalWidth = previewImage.naturalWidth;
             const naturalHeight = previewImage.naturalHeight;
             const r = hexSize; // 使用自然尺寸的六边形半径
@@ -948,13 +940,14 @@
   <!-- Hex Grid Layer -->
 `;
 
-            // 为每个有颜色的网格生成六边形
-            for (const grid of coloredGrids) {
+            // 为所有网格生成六边形
+            for (const grid of gridCoordinates) {
                 const row = grid.row;
                 const col = grid.col;
                 const centerX = col * xDist + (row % 2 === 1 ? xDist / 2 : 0);
                 const centerY = row * yDist;
-                const color = gridColorMap.get(grid.gridId);
+                const hasColor = gridColorMap.has(grid.gridId);
+                const color = hasColor ? gridColorMap.get(grid.gridId) : 'none';
 
                 // 计算六边形顶点
                 let points = [];
@@ -965,8 +958,13 @@
                     points.push(`${x},${y}`);
                 }
 
-                svgContent += `  <polygon points="${points.join(' ')}" fill="${color}" fill-opacity="0.8" stroke="#000000" stroke-opacity="0.5" stroke-width="1" data-grid-id="${grid.gridId}"/>
+                if (hasColor) {
+                    svgContent += `  <polygon points="${points.join(' ')}" fill="${color}" fill-opacity="0.8" stroke="#000000" stroke-opacity="1" stroke-width="1" data-grid-id="${grid.gridId}"/>
 `;
+                } else {
+                    svgContent += `  <polygon points="${points.join(' ')}" fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" data-grid-id="${grid.gridId}"/>
+`;
+                }
             }
 
             svgContent += `</svg>`;
