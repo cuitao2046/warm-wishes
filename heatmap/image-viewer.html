@@ -1020,12 +1020,22 @@
             // 第三步：绘制所有网格
             // 首先获取悬停网格的邻居集合
             const neighborGridIds = new Set();
+            let hoveredGridDisplayCenter = null;
+            let hoveredGridIdText = null;
             if (hoveredGridId) {
                 const hoveredGrid = gridCoordinates.find(g => g.gridId === hoveredGridId);
                 if (hoveredGrid && hoveredGrid.neighbors) {
                     for (const neighborId of hoveredGrid.neighbors) {
                         neighborGridIds.add(neighborId);
                     }
+                    // 保存悬停网格的显示坐标和ID
+                    const hRow = hoveredGrid.row;
+                    const hCol = hoveredGrid.col;
+                    hoveredGridDisplayCenter = {
+                        x: hCol * xDist + (hRow % 2 === 1 ? xDist / 2 : 0),
+                        y: hRow * yDist
+                    };
+                    hoveredGridIdText = hoveredGrid.gridId;
                 }
             }
 
@@ -1055,6 +1065,19 @@
                     const label = `(${Math.round(gridData.x)}, ${Math.round(gridData.y)})`;
                     ctx.fillText(label, centerX, centerY);
                 }
+            }
+
+            // 绘制悬停网格的网格ID
+            if (hoveredGridDisplayCenter && hoveredGridIdText) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+                ctx.font = `bold ${Math.max(12, r / 2.5)}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // 绘制文字阴影以提高可读性
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillText(hoveredGridIdText, hoveredGridDisplayCenter.x + 1, hoveredGridDisplayCenter.y + 1);
+                ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+                ctx.fillText(hoveredGridIdText, hoveredGridDisplayCenter.x, hoveredGridDisplayCenter.y);
             }
 
             // 绘制选择框
