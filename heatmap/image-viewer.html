@@ -534,6 +534,7 @@
         let gridColorMap = new Map(); // 网格ID到颜色的映射
         let gridCoordinates = []; // 存储所有网格的坐标数据
         let selectedGridIds = new Set(); // 当前选中的网格ID集合（多选）
+        let hoveredGridId = null; // 当前鼠标悬停的网格ID
 
         // 框选相关变量
         let isSelecting = false;
@@ -601,6 +602,7 @@
             gridCoordinates = [];
             isSelecting = false;
             isDragging = false;
+            hoveredGridId = null;
 
             // 重置调色板选中状态
             updatePaletteActiveState(currentGridColor);
@@ -662,7 +664,7 @@
         hexGridCanvas.addEventListener('mousedown', handleGridMouseDown);
         hexGridCanvas.addEventListener('mousemove', handleGridMouseMove);
         hexGridCanvas.addEventListener('mouseup', handleGridMouseUp);
-        hexGridCanvas.addEventListener('mouseleave', handleGridMouseUp);
+        hexGridCanvas.addEventListener('mouseleave', handleGridMouseLeave);
 
         // 鼠标滚轮缩放
         previewContainer.addEventListener('wheel', (e) => {
@@ -1016,6 +1018,17 @@
             }
 
             // 第三步：绘制所有网格
+            // 首先获取悬停网格的邻居集合
+            const neighborGridIds = new Set();
+            if (hoveredGridId) {
+                const hoveredGrid = gridCoordinates.find(g => g.gridId === hoveredGridId);
+                if (hoveredGrid && hoveredGrid.neighbors) {
+                    for (const neighborId of hoveredGrid.neighbors) {
+                        neighborGridIds.add(neighborId);
+                    }
+                }
+            }
+
             for (const gridData of gridCoordinates) {
                 const row = gridData.row;
                 const col = gridData.col;
@@ -1025,12 +1038,13 @@
 
                 const isHighlighted = selectedGridIds.has(gridId);
                 const hasCustomColor = gridColorMap.has(gridId);
+                const isNeighbor = neighborGridIds.has(gridId);
 
                 // 获取网格颜色，使用颜色映射或默认颜色
                 const gridColor = gridColorMap.get(gridId) || defaultGridColor;
 
-                // 绘制六边形（有自定义颜色的网格一直保持填充）
-                drawHexagon(ctx, centerX, centerY, r, isHighlighted, gridColor, hasCustomColor);
+                // 绘制六边形（有自定义颜色的网格一直保持填充，邻居网格加粗边框）
+                drawHexagon(ctx, centerX, centerY, r, isHighlighted, gridColor, hasCustomColor, isNeighbor);
 
                 // 如果开启了坐标显示，绘制坐标标签
                 if (coordEnabled) {
@@ -1145,7 +1159,7 @@
             }
         }
 
-        function drawHexagon(ctx, centerX, centerY, size, isHighlighted = false, color = defaultGridColor, hasCustomColor = false) {
+        function drawHexagon(ctx, centerX, centerY, size, isHighlighted = false, color = defaultGridColor, hasCustomColor = false, isNeighbor = false) {
             ctx.beginPath();
             // 六边形顶点，从-30度开始（尖顶朝上）
             for (let i = 0; i < 6; i++) {
@@ -1165,11 +1179,11 @@
                 ctx.fillStyle = hexToRgba(color, 0.8);
                 ctx.fill();
                 ctx.strokeStyle = "rgba(0, 0, 0, 1)";
-                ctx.lineWidth = isHighlighted ? 2 : 1;
+                ctx.lineWidth = isHighlighted ? 2 : (isNeighbor ? 2 : 1);
             } else {
                 // 普通样式：只有黑色边框
                 ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
-                ctx.lineWidth = 1;
+                ctx.lineWidth = isNeighbor ? 2 : 1;
             }
             ctx.stroke();
         }
@@ -1234,14 +1248,50 @@
 
         // 处理网格鼠标移动
         function handleGridMouseMove(e) {
-            if (!isSelecting || !gridEnabled) return;
+            if (!gridEnabled) return;
 
             const rect = hexGridCanvas.getBoundingClientRect();
-            // 调整鼠标坐标以适应当前缩放级别
-            selectionEndX = (e.clientX - rect.left) / currentZoom;
-            selectionEndY = (e.clientY - rect.top) / currentZoom;
+            const mouseX = (e.clientX - rect.left) / currentZoom;
+            const mouseY = (e.clientY - rect.top) / currentZoom;
 
-            drawHexGrid(); // 重绘以显示选择框
+            // 处理框选
+            if (isSelecting) {
+                selectionEndX = mouseX;
+                selectionEndY = mouseY;
+            }
+
+            // 处理鼠标悬停检测
+            const displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
+            const naturalWidth = previewImage.naturalWidth;
+            const imageScale = displayWidth / naturalWidth;
+            const r = hexSize * imageScale;
+
+            let foundHoveredGrid = null;
+            for (const grid of gridCoordinates) {
+                const center = getGridDisplayCenter(grid, imageScale);
+                if (isPointInHexagon(mouseX, mouseY, center.x, center.y, r)) {
+                    foundHoveredGrid = grid;
+                    break;
+                }
+            }
+
+            const newHoveredGridId = foundHoveredGrid ? foundHoveredGrid.gridId : null;
+            if (newHoveredGridId !== hoveredGridId) {
+                hoveredGridId = newHoveredGridId;
+                drawHexGrid(); // 重绘以更新邻居高亮
+            } else if (isSelecting) {
+                drawHexGrid(); // 重绘以显示选择框
+            }
+        }
+
+        // 处理网格鼠标离开
+        function handleGridMouseLeave() {
+            if (hoveredGridId !== null) {
+                hoveredGridId = null;
+                if (gridEnabled) {
+                    drawHexGrid(); // 重绘以清除邻居高亮
+                }
+            }
         }
 
         // 处理网格鼠标抬起
