@@ -536,6 +536,17 @@
         let selectedGridIds = new Set(); // 当前选中的网格ID集合（多选）
         let hoveredGridId = null; // 当前鼠标悬停的网格ID
 
+        // 颜色与编号的映射关系
+        const colorToTagMap = new Map([
+            ['#4ade80', 1], // 森林密集区（绿色）
+            ['#ef4444', 2], // 森林稀疏区（红色）
+            ['#3b82f6', 3], // 水坑（蓝色）
+            ['#eab308', 4], // 干坑（黄色）
+            ['#a855f7', 5], // 主路（紫色）
+            ['#f97316', 6], // 小路（橙色）
+            ['#06b6d4', 7]  // 盐沼（青色）
+        ]);
+
         // 框选相关变量
         let isSelecting = false;
         let selectionStartX = 0;
@@ -879,8 +890,18 @@
                 return;
             }
 
-            // 只导出有填充颜色的网格
-            const gridsToExport = gridCoordinates.filter(grid => gridColorMap.has(grid.gridId));
+            // 只导出有填充颜色的网格，并添加颜色和颜色编号
+            const gridsToExport = gridCoordinates
+                .filter(grid => gridColorMap.has(grid.gridId))
+                .map(grid => {
+                    const color = gridColorMap.get(grid.gridId);
+                    const colorTag = colorToTagMap.get(color) || 0;
+                    return {
+                        ...grid,
+                        color: color,
+                        colorTag: colorTag
+                    };
+                });
 
             if (gridsToExport.length === 0) {
                 alert('没有填充颜色的网格需要导出');
