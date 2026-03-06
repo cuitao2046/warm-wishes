@@ -154,6 +154,34 @@
             justify-content: center;
         }
 
+        .controls-main {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-height: 500px;
+            opacity: 1;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .controls.hidden .controls-main {
+            max-height: 0;
+            opacity: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .controls.hidden {
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .palette-container {
+            flex-shrink: 0;
+        }
+
         .control-btn {
             background: #4ade80;
             color: #1a1a1a;
@@ -454,30 +482,32 @@
     <input type="file" id="fileInput" accept="image/*" multiple>
 
     <div class="preview-container" id="previewContainer">
-        <div class="controls">
-            <button class="nav-btn" id="prevBtn" disabled>◀</button>
-            <span class="counter" id="counter">0 / 0</span>
-            <button class="nav-btn" id="nextBtn" disabled>▶</button>
-            <button class="control-btn" id="uploadMoreBtn">📁 添加更多</button>
-            <button class="control-btn" id="resetBtn">🔄 重置</button>
-            <div class="zoom-controls">
-                <button class="zoom-btn" id="zoomOutBtn" title="缩小">−</button>
-                <span class="zoom-display" id="zoomDisplay">100%</span>
-                <button class="zoom-btn" id="zoomInBtn" title="放大">+</button>
-                <button class="zoom-btn" id="zoomResetBtn" title="重置缩放">1:1</button>
-            </div>
-            <div class="grid-controls">
-                <button class="grid-btn" id="gridBtn" title="显示/隐藏网格">⬡ 网格化</button>
-                <button class="coord-btn" id="coordBtn" title="显示/隐藏坐标">📍 坐标</button>
-                <div class="size-control">
-                    <label for="sizeSlider">半径</label>
-                    <input type="range" id="sizeSlider" class="size-slider" min="40" max="300" value="120" title="调整网格半径">
-                    <span class="size-value" id="sizeValue">120</span>
+        <div class="controls" id="controls">
+            <div class="controls-main" id="controlsMain">
+                <button class="nav-btn" id="prevBtn" disabled>◀</button>
+                <span class="counter" id="counter">0 / 0</span>
+                <button class="nav-btn" id="nextBtn" disabled>▶</button>
+                <button class="control-btn" id="uploadMoreBtn">📁 添加更多</button>
+                <button class="control-btn" id="resetBtn">🔄 重置</button>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoomOutBtn" title="缩小">−</button>
+                    <span class="zoom-display" id="zoomDisplay">100%</span>
+                    <button class="zoom-btn" id="zoomInBtn" title="放大">+</button>
+                    <button class="zoom-btn" id="zoomResetBtn" title="重置缩放">1:1</button>
                 </div>
-                <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出JSON</button>
-                <button class="export-btn" id="exportSvgBtn" title="导出网格SVG矢量图">📥 导出SVG</button>
+                <div class="grid-controls">
+                    <button class="grid-btn" id="gridBtn" title="显示/隐藏网格">⬡ 网格化</button>
+                    <button class="coord-btn" id="coordBtn" title="显示/隐藏坐标">📍 坐标</button>
+                    <div class="size-control">
+                        <label for="sizeSlider">半径</label>
+                        <input type="range" id="sizeSlider" class="size-slider" min="40" max="300" value="120" title="调整网格半径">
+                        <span class="size-value" id="sizeValue">120</span>
+                    </div>
+                    <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出JSON</button>
+                    <button class="export-btn" id="exportSvgBtn" title="导出网格SVG矢量图">📥 导出SVG</button>
+                </div>
             </div>
-            <div class="palette-container">
+            <div class="palette-container" id="paletteContainer">
                 <span class="palette-label">调色板</span>
                 <div class="palette-swatches">
                     <div class="palette-swatch active" data-color="#4ade80" data-label="森林密集区" style="background-color: #4ade80;"></div>
@@ -517,6 +547,9 @@
         const exportBtn = document.getElementById('exportBtn');
         const exportSvgBtn = document.getElementById('exportSvgBtn');
         const imageWrapper = document.getElementById('imageWrapper');
+        const controls = document.getElementById('controls');
+        const controlsMain = document.getElementById('controlsMain');
+        const paletteContainer = document.getElementById('paletteContainer');
         const hexGridCanvas = document.getElementById('hexGridCanvas');
         const paletteSwatches = document.querySelectorAll('.palette-swatch');
         const sizeSlider = document.getElementById('sizeSlider');
@@ -537,6 +570,8 @@
         let gridCoordinates = []; // 存储所有网格的坐标数据
         let selectedGridIds = new Set(); // 当前选中的网格ID集合（多选）
         let hoveredGridId = null; // 当前鼠标悬停的网格ID
+        let controlsVisible = true; // 控制栏是否可见
+        let controlsHoverTimer = null; // 控制栏悬停计时器
 
         // 颜色与编号的映射关系
         const colorToTagMap = new Map([
@@ -688,6 +723,13 @@
         exportBtn.addEventListener('click', exportCoordinates);
         // SVG导出按钮
         exportSvgBtn.addEventListener('click', exportGridSvg);
+
+        // 控制栏隐藏/显示事件
+        controls.addEventListener('mouseenter', showControls);
+        controls.addEventListener('mouseleave', handleControlsMouseLeave);
+
+        // 初始隐藏控制栏（只保留调色板）
+        hideControls();
 
         // 调色板色块点击事件
         paletteSwatches.forEach(swatch => {
@@ -908,6 +950,33 @@
             if (gridEnabled) {
                 drawHexGrid();
             }
+        }
+
+        // 隐藏控制栏（只保留调色板）
+        function hideControls() {
+            if (controlsHoverTimer) {
+                clearTimeout(controlsHoverTimer);
+                controlsHoverTimer = null;
+            }
+            controlsVisible = false;
+            controls.classList.add('hidden');
+        }
+
+        // 显示控制栏
+        function showControls() {
+            if (controlsHoverTimer) {
+                clearTimeout(controlsHoverTimer);
+                controlsHoverTimer = null;
+            }
+            controlsVisible = true;
+            controls.classList.remove('hidden');
+        }
+
+        // 处理控制栏鼠标离开
+        function handleControlsMouseLeave() {
+            controlsHoverTimer = setTimeout(() => {
+                hideControls();
+            }, 300);
         }
 
         function exportCoordinates() {
