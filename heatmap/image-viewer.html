@@ -879,7 +879,15 @@
                 return;
             }
 
-            const dataStr = JSON.stringify(gridCoordinates, null, 2);
+            // 只导出有填充颜色的网格
+            const gridsToExport = gridCoordinates.filter(grid => gridColorMap.has(grid.gridId));
+
+            if (gridsToExport.length === 0) {
+                alert('没有填充颜色的网格需要导出');
+                return;
+            }
+
+            const dataStr = JSON.stringify(gridsToExport, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
