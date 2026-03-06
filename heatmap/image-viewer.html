@@ -223,20 +223,10 @@
             cursor: not-allowed;
         }
 
-        .counter {
-            color: #888;
-            font-size: 0.9rem;
-            min-width: 60px;
-            text-align: center;
-        }
-
         .zoom-controls {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-left: 15px;
-            padding-left: 15px;
-            border-left: 1px solid #444;
         }
 
         .zoom-display {
@@ -274,9 +264,8 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-left: 15px;
-            padding-left: 15px;
-            border-left: 1px solid #444;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .grid-btn {
@@ -484,18 +473,14 @@
     <div class="preview-container" id="previewContainer">
         <div class="controls" id="controls">
             <div class="controls-main" id="controlsMain">
-                <button class="nav-btn" id="prevBtn" disabled>◀</button>
-                <span class="counter" id="counter">0 / 0</span>
-                <button class="nav-btn" id="nextBtn" disabled>▶</button>
-                <button class="control-btn" id="uploadMoreBtn">📁 添加更多</button>
-                <button class="control-btn" id="resetBtn">🔄 重置</button>
-                <div class="zoom-controls">
-                    <button class="zoom-btn" id="zoomOutBtn" title="缩小">−</button>
-                    <span class="zoom-display" id="zoomDisplay">100%</span>
-                    <button class="zoom-btn" id="zoomInBtn" title="放大">+</button>
-                    <button class="zoom-btn" id="zoomResetBtn" title="重置缩放">1:1</button>
-                </div>
                 <div class="grid-controls">
+                    <button class="control-btn" id="resetBtn">🔄 重置</button>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" id="zoomOutBtn" title="缩小">−</button>
+                        <span class="zoom-display" id="zoomDisplay">100%</span>
+                        <button class="zoom-btn" id="zoomInBtn" title="放大">+</button>
+                        <button class="zoom-btn" id="zoomResetBtn" title="重置缩放">1:1</button>
+                    </div>
                     <button class="grid-btn" id="gridBtn" title="显示/隐藏网格">⬡ 网格化</button>
                     <button class="coord-btn" id="coordBtn" title="显示/隐藏坐标">📍 坐标</button>
                     <div class="size-control">
@@ -533,11 +518,7 @@
         const previewContainer = document.getElementById('previewContainer');
         const previewImage = document.getElementById('previewImage');
         const previewInfo = document.getElementById('previewInfo');
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const uploadMoreBtn = document.getElementById('uploadMoreBtn');
         const resetBtn = document.getElementById('resetBtn');
-        const counter = document.getElementById('counter');
         const zoomOutBtn = document.getElementById('zoomOutBtn');
         const zoomInBtn = document.getElementById('zoomInBtn');
         const zoomResetBtn = document.getElementById('zoomResetBtn');
@@ -646,12 +627,6 @@
             handleFiles(e.dataTransfer.files);
         });
 
-        // 添加更多按钮
-        uploadMoreBtn.addEventListener('click', () => {
-            fileInput.value = '';
-            fileInput.click();
-        });
-
         // 重置按钮
         resetBtn.addEventListener('click', () => {
             // 重置所有状态变量
@@ -695,19 +670,6 @@
 
             // 确保上传区域可见
             uploadArea.style.display = '';
-        });
-
-        // 导航按钮
-        prevBtn.addEventListener('click', () => {
-            if (currentIndex > 0) {
-                showPreview(currentIndex - 1);
-            }
-        });
-
-        nextBtn.addEventListener('click', () => {
-            if (currentIndex < loadedFiles.length - 1) {
-                showPreview(currentIndex + 1);
-            }
         });
 
         // 缩放按钮
@@ -824,9 +786,6 @@
                         // 如果是第一张图片，直接显示
                         if (loadedFiles.length === 1) {
                             showPreview(0);
-                        } else {
-                            updateCounter();
-                            updateNavButtons();
                         }
                     };
                     reader.readAsDataURL(file);
@@ -849,9 +808,6 @@
             previewContainer.classList.add('active');
             uploadArea.style.display = 'none';
 
-            updateCounter();
-            updateNavButtons();
-
             // 先设置 src，然后检查图片是否已加载完成
             previewImage.src = file.dataUrl;
 
@@ -870,15 +826,6 @@
                     }
                 };
             }
-        }
-
-        function updateCounter() {
-            counter.textContent = `${currentIndex + 1} / ${loadedFiles.length}`;
-        }
-
-        function updateNavButtons() {
-            prevBtn.disabled = currentIndex <= 0;
-            nextBtn.disabled = currentIndex >= loadedFiles.length - 1;
         }
 
         function zoomIn() {
