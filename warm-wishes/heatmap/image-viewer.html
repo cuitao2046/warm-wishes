@@ -856,8 +856,6 @@
                 return;
             }
             selectedExportFormat = null;
-            jsonOption.classList.remove('active');
-            csvOption.classList.remove('active');
             jsonOption.style.borderColor = '#444';
             csvOption.style.borderColor = '#444';
             jsonOption.style.background = '#3a3a3a';
@@ -873,8 +871,6 @@
 
         function selectExportFormat(format) {
             selectedExportFormat = format;
-            jsonOption.classList.remove('active');
-            csvOption.classList.remove('active');
             jsonOption.style.borderColor = format === 'json' ? '#4ade80' : '#444';
             csvOption.style.borderColor = format === 'csv' ? '#4ade80' : '#444';
             if (format === 'json') {
