@@ -474,7 +474,8 @@
                     <input type="range" id="sizeSlider" class="size-slider" min="40" max="300" value="120" title="调整网格半径">
                     <span class="size-value" id="sizeValue">120</span>
                 </div>
-                <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出</button>
+                <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出JSON</button>
+                <button class="export-btn" id="exportSvgBtn" title="导出网格SVG矢量图">📥 导出SVG</button>
             </div>
             <div class="palette-container">
                 <span class="palette-label">调色板</span>
@@ -514,6 +515,7 @@
         const gridBtn = document.getElementById('gridBtn');
         const coordBtn = document.getElementById('coordBtn');
         const exportBtn = document.getElementById('exportBtn');
+        const exportSvgBtn = document.getElementById('exportSvgBtn');
         const imageWrapper = document.getElementById('imageWrapper');
         const hexGridCanvas = document.getElementById('hexGridCanvas');
         const paletteSwatches = document.querySelectorAll('.palette-swatch');
@@ -546,6 +548,28 @@
             ['#f97316', 6], // 小路（橙色）
             ['#06b6d4', 7]  // 盐沼（青色）
         ]);
+
+        // 颜色与标签的映射关系
+        const colorToLabelMap = new Map([
+            ['#4ade80', '森林密集区'],
+            ['#ef4444', '森林稀疏区'],
+            ['#3b82f6', '水坑'],
+            ['#eab308', '干坑'],
+            ['#a855f7', '主路'],
+            ['#f97316', '小路'],
+            ['#06b6d4', '盐沼']
+        ]);
+
+        // 预设颜色列表（按顺序）
+        const presetColors = [
+            '#4ade80',
+            '#ef4444',
+            '#3b82f6',
+            '#eab308',
+            '#a855f7',
+            '#f97316',
+            '#06b6d4'
+        ];
 
         // 框选相关变量
         let isSelecting = false;
@@ -662,6 +686,8 @@
         coordBtn.addEventListener('click', toggleCoord);
         // 导出按钮
         exportBtn.addEventListener('click', exportCoordinates);
+        // SVG导出按钮
+        exportSvgBtn.addEventListener('click', exportGridSvg);
 
         // 调色板色块点击事件
         paletteSwatches.forEach(swatch => {
@@ -914,6 +940,99 @@
             const link = document.createElement('a');
             link.href = url;
             link.download = 'grid-coordinates.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportGridSvg() {
+            if (gridCoordinates.length === 0) {
+                alert('请先开启网格化以生成坐标数据');
+                return;
+            }
+
+            const naturalWidth = previewImage.naturalWidth;
+            const naturalHeight = previewImage.naturalHeight;
+            const r = hexSize; // 使用自然尺寸的六边形半径
+            const xDist = r * Math.sqrt(3);
+            const yDist = r * 1.5;
+
+            // Legend配置 - 根据图片尺寸动态计算
+            const minDimension = Math.min(naturalWidth, naturalHeight);
+            const legendFontSize = Math.max(12, Math.round(minDimension / 40));
+            const legendItemHeight = Math.round(legendFontSize * 2);
+            const legendPadding = Math.round(legendFontSize * 0.8);
+            const legendColorBoxSize = Math.round(legendFontSize * 1.4);
+            const legendTextMargin = Math.round(legendFontSize * 0.6);
+            const legendItems = presetColors.length;
+            const legendWidth = Math.round(legendFontSize * 11);
+            const legendHeight = legendPadding * 2 + legendItems * legendItemHeight;
+            const legendMargin = Math.round(legendFontSize * 1.5);
+            const legendX = naturalWidth - legendWidth - legendMargin;
+            const legendY = naturalHeight - legendHeight - legendMargin;
+
+            // 构建SVG
+            let svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${naturalWidth} ${naturalHeight}" width="${naturalWidth}" height="${naturalHeight}">
+  <!-- Hex Grid Layer -->
+`;
+
+            // 为所有网格生成六边形
+            for (const grid of gridCoordinates) {
+                const row = grid.row;
+                const col = grid.col;
+                const centerX = col * xDist + (row % 2 === 1 ? xDist / 2 : 0);
+                const centerY = row * yDist;
+                const hasColor = gridColorMap.has(grid.gridId);
+                const color = hasColor ? gridColorMap.get(grid.gridId) : 'none';
+
+                // 计算六边形顶点
+                let points = [];
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i - Math.PI / 6;
+                    const x = centerX + r * Math.cos(angle);
+                    const y = centerY + r * Math.sin(angle);
+                    points.push(`${x},${y}`);
+                }
+
+                if (hasColor) {
+                    svgContent += `  <polygon points="${points.join(' ')}" fill="${color}" fill-opacity="0.8" stroke="#000000" stroke-opacity="1" stroke-width="1" data-grid-id="${grid.gridId}"/>
+`;
+                } else {
+                    svgContent += `  <polygon points="${points.join(' ')}" fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" data-grid-id="${grid.gridId}"/>
+`;
+                }
+            }
+
+            // 添加Legend
+            svgContent += `
+  <!-- Legend -->
+  <g transform="translate(${legendX}, ${legendY})">
+    <!-- Legend背景（半透明） -->
+    <rect x="0" y="0" width="${legendWidth}" height="${legendHeight}" fill="rgba(0,0,0,0.5)" rx="5" ry="5"/>
+`;
+
+            // 添加Legend项目
+            presetColors.forEach((color, index) => {
+                const label = colorToLabelMap.get(color);
+                const itemY = legendPadding + index * legendItemHeight;
+                const colorBoxY = itemY + (legendItemHeight - legendColorBoxSize) / 2;
+                const textY = itemY + legendItemHeight - (legendItemHeight - legendFontSize) / 2 - Math.round(legendFontSize * 0.15);
+
+                svgContent += `    <!-- ${label} -->
+    <rect x="${legendPadding}" y="${colorBoxY}" width="${legendColorBoxSize}" height="${legendColorBoxSize}" fill="${color}" fill-opacity="0.8" stroke="#000000" stroke-opacity="1" stroke-width="1"/>
+    <text x="${legendPadding + legendColorBoxSize + legendTextMargin}" y="${textY}" font-family="sans-serif" font-size="${legendFontSize}" fill="#ffffff">${label}</text>
+`;
+            });
+
+            svgContent += `  </g>
+</svg>`;
+
+            // 下载SVG
+            const dataBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'grid-layer.svg';
             link.click();
             URL.revokeObjectURL(url);
         }
