@@ -1532,24 +1532,27 @@
                 }
             }
 
-            // 切换选中状态
+            // 切换选中状态和填色状态
             if (foundGrid) {
-                if (selectedGridIds.has(foundGrid.gridId)) {
-                    if (isMultiSelect) {
-                        selectedGridIds.delete(foundGrid.gridId); // Ctrl+点击取消选中
+                if (isMultiSelect) {
+                    // Ctrl/Cmd+点击：追加/取消选中
+                    if (selectedGridIds.has(foundGrid.gridId)) {
+                        selectedGridIds.delete(foundGrid.gridId);
                     } else {
-                        selectedGridIds.clear();
                         selectedGridIds.add(foundGrid.gridId);
-                        // 使用当前颜色填充选中的网格
-                        gridColorMap.set(foundGrid.gridId, currentGridColor);
                     }
                 } else {
-                    if (!isMultiSelect) {
+                    // 普通点击：切换填色状态
+                    if (gridColorMap.has(foundGrid.gridId)) {
+                        // 已有填色，取消填色
+                        gridColorMap.delete(foundGrid.gridId);
                         selectedGridIds.clear();
+                    } else {
+                        // 没有填色，使用当前颜色填充
+                        selectedGridIds.clear();
+                        selectedGridIds.add(foundGrid.gridId);
+                        gridColorMap.set(foundGrid.gridId, currentGridColor);
                     }
-                    selectedGridIds.add(foundGrid.gridId); // 选中新网格
-                    // 使用当前颜色填充选中的网格
-                    gridColorMap.set(foundGrid.gridId, currentGridColor);
                 }
             } else if (!isMultiSelect) {
                 selectedGridIds.clear(); // 点击空白处取消全部选中
