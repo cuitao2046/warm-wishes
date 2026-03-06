@@ -141,7 +141,7 @@
             position: fixed;
             top: 20px;
             left: 50%;
-            transform: translateX(-50%) translateY(0);
+            transform: translateX(-50%);
             display: flex;
             gap: 15px;
             align-items: center;
@@ -152,11 +152,6 @@
             z-index: 1001;
             flex-wrap: wrap;
             justify-content: center;
-            transition: transform 0.3s ease;
-        }
-
-        .controls.hidden {
-            transform: translateX(-50%) translateY(-65px);
         }
 
         .controls-main {
@@ -165,6 +160,22 @@
             align-items: center;
             flex-wrap: wrap;
             justify-content: center;
+            max-height: 500px;
+            opacity: 1;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .controls.hidden .controls-main {
+            max-height: 0;
+            opacity: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .controls.hidden {
+            padding-top: 0;
+            padding-bottom: 0;
         }
 
         .palette-container {
