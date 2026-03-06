@@ -808,6 +808,7 @@
 
         function drawHexGrid() {
             gridCoordinates = [];
+            const gridMap = new Map();
 
             let displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
             let displayHeight = previewImage.offsetHeight || previewImage.clientHeight;
@@ -840,6 +841,7 @@
             const cols = Math.ceil(displayWidth / xDist) + 2;
             const rows = Math.ceil(displayHeight / yDist) + 2;
 
+            // 第一步：生成所有网格并存入 map
             for (let row = -1; row < rows; row++) {
                 for (let col = -1; col < cols; col++) {
                     const centerX = col * xDist + (row % 2 === 1 ? xDist / 2 : 0);
@@ -863,10 +865,57 @@
                         y: coordY,
                         centerXNatural: naturalCenterX,
                         centerYNatural: naturalCenterY,
-                        hexSizeNatural: hexSize
+                        hexSizeNatural: hexSize,
+                        neighbors: []
                     };
 
                     gridCoordinates.push(gridData);
+                    gridMap.set(gridData.gridId, gridData);
+                }
+            }
+
+            // 第二步：为每个网格计算邻居
+            for (const gridData of gridCoordinates) {
+                const row = gridData.row;
+                const col = gridData.col;
+                const neighbors = [];
+
+                // 六边形网格的六个邻居偏移
+                let neighborOffsets;
+                if (row % 2 === 0) {
+                    // 偶数行
+                    neighborOffsets = [
+                        [-1, 0],    // 左上
+                        [-1, -1],   // 右上
+                        [0, -1],    // 左
+                        [0, 1],     // 右
+                        [1, 0],     // 左下
+                        [1, -1]     // 右下
+                    ];
+                } else {
+                    // 奇数行
+                    neighborOffsets = [
+                        [-1, 1],    // 左上
+                        [-1, 0],    // 右上
+                        [0, -1],    // 左
+                        [0, 1],     // 右
+                        [1, 1],     // 左下
+                        [1, 0]      // 右下
+                    ];
+                }
+
+                // 查找邻居
+                for (const [dr, dc] of neighborOffsets) {
+                    const neighborRow = row + dr;
+                    const neighborCol = col + dc;
+                    const neighborId = `${neighborRow}_${neighborCol}`;
+                    if (gridMap.has(neighborId)) {
+                        neighbors.push(neighborId);
+                    }
+                }
+
+                gridData.neighbors = neighbors;
+            }
 
                     const isSelected = selectedGrid && selectedGrid.gridId === gridData.gridId;
 
