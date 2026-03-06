@@ -549,6 +549,28 @@
             ['#06b6d4', 7]  // 盐沼（青色）
         ]);
 
+        // 颜色与标签的映射关系
+        const colorToLabelMap = new Map([
+            ['#4ade80', '森林密集区'],
+            ['#ef4444', '森林稀疏区'],
+            ['#3b82f6', '水坑'],
+            ['#eab308', '干坑'],
+            ['#a855f7', '主路'],
+            ['#f97316', '小路'],
+            ['#06b6d4', '盐沼']
+        ]);
+
+        // 预设颜色列表（按顺序）
+        const presetColors = [
+            '#4ade80',
+            '#ef4444',
+            '#3b82f6',
+            '#eab308',
+            '#a855f7',
+            '#f97316',
+            '#06b6d4'
+        ];
+
         // 框选相关变量
         let isSelecting = false;
         let selectionStartX = 0;
@@ -934,6 +956,18 @@
             const xDist = r * Math.sqrt(3);
             const yDist = r * 1.5;
 
+            // Legend配置
+            const legendItemHeight = 28;
+            const legendPadding = 10;
+            const legendColorBoxSize = 20;
+            const legendTextMargin = 8;
+            const legendFontSize = 14;
+            const legendItems = presetColors.length;
+            const legendWidth = 150;
+            const legendHeight = legendPadding * 2 + legendItems * legendItemHeight;
+            const legendX = naturalWidth - legendWidth - 20;
+            const legendY = naturalHeight - legendHeight - 20;
+
             // 构建SVG
             let svgContent = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${naturalWidth} ${naturalHeight}" width="${naturalWidth}" height="${naturalHeight}">
@@ -967,7 +1001,29 @@
                 }
             }
 
-            svgContent += `</svg>`;
+            // 添加Legend
+            svgContent += `
+  <!-- Legend -->
+  <g transform="translate(${legendX}, ${legendY})">
+    <!-- Legend背景（半透明） -->
+    <rect x="0" y="0" width="${legendWidth}" height="${legendHeight}" fill="rgba(0,0,0,0.5)" rx="5" ry="5"/>
+`;
+
+            // 添加Legend项目
+            presetColors.forEach((color, index) => {
+                const label = colorToLabelMap.get(color);
+                const itemY = legendPadding + index * legendItemHeight;
+                const colorBoxY = itemY + (legendItemHeight - legendColorBoxSize) / 2;
+                const textY = itemY + legendItemHeight - (legendItemHeight - legendFontSize) / 2 - 2;
+
+                svgContent += `    <!-- ${label} -->
+    <rect x="${legendPadding}" y="${colorBoxY}" width="${legendColorBoxSize}" height="${legendColorBoxSize}" fill="${color}" fill-opacity="0.8" stroke="#000000" stroke-opacity="1" stroke-width="1"/>
+    <text x="${legendPadding + legendColorBoxSize + legendTextMargin}" y="${textY}" font-family="sans-serif" font-size="${legendFontSize}" fill="#ffffff">${label}</text>
+`;
+            });
+
+            svgContent += `  </g>
+</svg>`;
 
             // 下载SVG
             const dataBlob = new Blob([svgContent], { type: 'image/svg+xml' });
