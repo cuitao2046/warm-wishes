@@ -1090,6 +1090,16 @@
                         return;
                     }
 
+                    // 从导入数据中获取网格半径并设置
+                    if (firstGrid.hasOwnProperty('hexSizeNatural')) {
+                        const importedHexSize = parseInt(firstGrid.hexSizeNatural);
+                        if (!isNaN(importedHexSize) && importedHexSize >= 40 && importedHexSize <= 300) {
+                            hexSize = importedHexSize;
+                            sizeSlider.value = hexSize;
+                            sizeValue.textContent = hexSize;
+                        }
+                    }
+
                     // 清空现有的颜色映射和选中状态
                     gridColorMap.clear();
                     selectedGridIds.clear();
@@ -1101,7 +1111,7 @@
                         hexGridCanvas.classList.add('active');
                     }
 
-                    // 先生成网格
+                    // 先生成网格（使用导入的半径）
                     drawHexGrid();
 
                     // 按照行和列匹配网格并填充颜色
