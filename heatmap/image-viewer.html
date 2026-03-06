@@ -488,8 +488,10 @@
                         <input type="range" id="sizeSlider" class="size-slider" min="40" max="300" value="120" title="调整网格半径">
                         <span class="size-value" id="sizeValue">120</span>
                     </div>
+                    <button class="export-btn" id="importBtn" title="导入坐标数据">📥 导入JSON</button>
                     <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出JSON</button>
                     <button class="export-btn" id="exportSvgBtn" title="导出网格SVG矢量图">📥 导出SVG</button>
+                    <input type="file" id="importFileInput" accept=".json" style="display: none;">
                 </div>
             </div>
             <div class="palette-container" id="paletteContainer">
@@ -527,6 +529,8 @@
         const coordBtn = document.getElementById('coordBtn');
         const exportBtn = document.getElementById('exportBtn');
         const exportSvgBtn = document.getElementById('exportSvgBtn');
+        const importBtn = document.getElementById('importBtn');
+        const importFileInput = document.getElementById('importFileInput');
         const imageWrapper = document.getElementById('imageWrapper');
         const controls = document.getElementById('controls');
         const controlsMain = document.getElementById('controlsMain');
@@ -685,6 +689,16 @@
         exportBtn.addEventListener('click', exportCoordinates);
         // SVG导出按钮
         exportSvgBtn.addEventListener('click', exportGridSvg);
+        // 导入按钮
+        importBtn.addEventListener('click', () => {
+            if (!previewContainer.classList.contains('active')) {
+                alert('请先打开图片后再导入数据');
+                return;
+            }
+            importFileInput.click();
+        });
+        // 导入文件选择
+        importFileInput.addEventListener('change', handleImportFile);
 
         // 控制栏隐藏/显示事件
         controls.addEventListener('mouseenter', showControls);
@@ -1051,6 +1065,90 @@
             link.download = 'grid-layer.svg';
             link.click();
             URL.revokeObjectURL(url);
+        }
+
+        // 处理导入文件
+        function handleImportFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+
+                    if (!Array.isArray(importedData) || importedData.length === 0) {
+                        alert('导入的数据格式不正确，请确保是有效的JSON数组');
+                        return;
+                    }
+
+                    // 验证数据格式
+                    const firstGrid = importedData[0];
+                    if (!firstGrid.hasOwnProperty('row') || !firstGrid.hasOwnProperty('col') ||
+                        (!firstGrid.hasOwnProperty('color') && !firstGrid.hasOwnProperty('colorTag'))) {
+                        alert('导入的数据格式不正确，需要包含row、col和color/colorTag字段');
+                        return;
+                    }
+
+                    // 清空现有的颜色映射和选中状态
+                    gridColorMap.clear();
+                    selectedGridIds.clear();
+
+                    // 启用网格
+                    if (!gridEnabled) {
+                        gridEnabled = true;
+                        gridBtn.classList.add('active');
+                        hexGridCanvas.classList.add('active');
+                    }
+
+                    // 先生成网格
+                    drawHexGrid();
+
+                    // 按照行和列匹配网格并填充颜色
+                    let filledCount = 0;
+                    for (const importedGrid of importedData) {
+                        // 查找匹配的网格（通过row和col）
+                        const matchingGrid = gridCoordinates.find(g => g.row === importedGrid.row && g.col === importedGrid.col);
+                        if (matchingGrid) {
+                            let colorToUse = null;
+
+                            // 优先使用color字段，如果没有则使用colorTag映射
+                            if (importedGrid.color) {
+                                colorToUse = importedGrid.color;
+                            } else if (importedGrid.colorTag) {
+                                // 根据colorTag找到对应的颜色
+                                for (const [color, tag] of colorToTagMap) {
+                                    if (tag === importedGrid.colorTag) {
+                                        colorToUse = color;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (colorToUse) {
+                                gridColorMap.set(matchingGrid.gridId, colorToUse);
+                                filledCount++;
+                            }
+                        }
+                    }
+
+                    // 重绘网格以显示颜色
+                    drawHexGrid();
+
+                    alert(`成功导入 ${filledCount} 个网格的颜色数据`);
+
+                } catch (error) {
+                    alert('导入失败：' + error.message);
+                    console.error('Import error:', error);
+                }
+            };
+
+            reader.onerror = function() {
+                alert('文件读取失败');
+            };
+
+            reader.readAsText(file);
+            e.target.value = ''; // 清空input以便再次选择同一文件
         }
 
         function drawHexGrid() {
