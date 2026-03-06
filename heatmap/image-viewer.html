@@ -141,7 +141,7 @@
             position: fixed;
             top: 20px;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translateX(-50%) translateY(0);
             display: flex;
             gap: 15px;
             align-items: center;
@@ -152,22 +152,11 @@
             z-index: 1001;
             flex-wrap: wrap;
             justify-content: center;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease;
         }
 
         .controls.hidden {
-            padding: 0;
-            background: transparent;
-            backdrop-filter: none;
-        }
-
-        .controls.hidden .controls-main {
-            max-width: 0;
-            opacity: 0;
-            overflow: hidden;
-            margin: 0;
-            padding: 0;
-            border: none;
+            transform: translateX(-50%) translateY(-65px);
         }
 
         .controls-main {
@@ -176,10 +165,10 @@
             align-items: center;
             flex-wrap: wrap;
             justify-content: center;
-            max-width: 2000px;
-            opacity: 1;
-            transition: all 0.3s ease;
-            overflow: visible;
+        }
+
+        .palette-container {
+            flex-shrink: 0;
         }
 
         .control-btn {
@@ -725,10 +714,8 @@
         exportSvgBtn.addEventListener('click', exportGridSvg);
 
         // 控制栏隐藏/显示事件
-        controls.addEventListener('mouseenter', handleControlsMouseEnter);
+        controls.addEventListener('mouseenter', showControls);
         controls.addEventListener('mouseleave', handleControlsMouseLeave);
-        paletteContainer.addEventListener('mouseenter', handlePaletteMouseEnter);
-        paletteContainer.addEventListener('mouseleave', handlePaletteMouseLeave);
 
         // 初始隐藏控制栏（只保留调色板）
         hideControls();
@@ -974,37 +961,11 @@
             controls.classList.remove('hidden');
         }
 
-        // 处理控制栏鼠标进入
-        function handleControlsMouseEnter() {
-            showControls();
-        }
-
         // 处理控制栏鼠标离开
         function handleControlsMouseLeave() {
-            if (!controlsVisible) return;
             controlsHoverTimer = setTimeout(() => {
                 hideControls();
             }, 300);
-        }
-
-        // 处理调色板鼠标进入
-        function handlePaletteMouseEnter() {
-            if (controlsVisible) return;
-            controlsHoverTimer = setTimeout(() => {
-                showControls();
-            }, 500);
-        }
-
-        // 处理调色板鼠标离开
-        function handlePaletteMouseLeave() {
-            if (controlsHoverTimer && !controlsVisible) {
-                clearTimeout(controlsHoverTimer);
-                controlsHoverTimer = null;
-            } else if (controlsVisible) {
-                controlsHoverTimer = setTimeout(() => {
-                    hideControls();
-                }, 300);
-            }
         }
 
         function exportCoordinates() {
