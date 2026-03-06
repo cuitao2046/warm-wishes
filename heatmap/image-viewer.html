@@ -890,6 +890,7 @@
         function drawHexGrid() {
             // 清空坐标数据
             gridCoordinates = [];
+            const gridMap = new Map();
 
             // 获取图片的显示尺寸
             let displayWidth = previewImage.offsetWidth || previewImage.clientWidth;
@@ -930,6 +931,7 @@
             const cols = Math.ceil(displayWidth / xDist) + 2;
             const rows = Math.ceil(displayHeight / yDist) + 2;
 
+            // 第一步：生成所有网格并存入 map
             for (let row = -1; row < rows; row++) {
                 for (let col = -1; col < cols; col++) {
                     // 奇数行向右偏移一半水平间距
@@ -951,14 +953,9 @@
                     const coordY = naturalHeight - naturalCenterY;
 
                     const gridId = `${row}_${col}`;
-                    const isHighlighted = selectedGridIds.has(gridId);
-                    const hasCustomColor = gridColorMap.has(gridId);
-
-                    // 获取网格颜色，使用颜色映射或默认颜色
-                    const gridColor = gridColorMap.get(gridId) || defaultGridColor;
 
                     // 保存坐标数据
-                    gridCoordinates.push({
+                    const gridData = {
                         gridId: gridId,
                         row: row,
                         col: col,
@@ -966,21 +963,83 @@
                         y: coordY,
                         centerXNatural: naturalCenterX,
                         centerYNatural: naturalCenterY,
-                        hexSizeNatural: hexSize
-                    });
+                        hexSizeNatural: hexSize,
+                        neighbors: []
+                    };
 
-                    // 绘制六边形（有自定义颜色的网格一直保持填充）
-                    drawHexagon(ctx, centerX, centerY, r, isHighlighted, gridColor, hasCustomColor);
+                    gridCoordinates.push(gridData);
+                    gridMap.set(gridData.gridId, gridData);
+                }
+            }
 
-                    // 如果开启了坐标显示，绘制坐标标签
-                    if (coordEnabled) {
-                        ctx.fillStyle = isHighlighted ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.9)';
-                        ctx.font = `${Math.max(10, r / 3)}px monospace`;
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        const label = `(${Math.round(coordX)}, ${Math.round(coordY)})`;
-                        ctx.fillText(label, centerX, centerY);
+            // 第二步：为每个网格计算邻居
+            for (const gridData of gridCoordinates) {
+                const row = gridData.row;
+                const col = gridData.col;
+                const neighbors = [];
+
+                // 六边形网格的六个邻居偏移
+                let neighborOffsets;
+                if (row % 2 === 0) {
+                    // 偶数行
+                    neighborOffsets = [
+                        [-1, 0],    // 左上
+                        [-1, -1],   // 右上
+                        [0, -1],    // 左
+                        [0, 1],     // 右
+                        [1, 0],     // 左下
+                        [1, -1]     // 右下
+                    ];
+                } else {
+                    // 奇数行
+                    neighborOffsets = [
+                        [-1, 1],    // 左上
+                        [-1, 0],    // 右上
+                        [0, -1],    // 左
+                        [0, 1],     // 右
+                        [1, 1],     // 左下
+                        [1, 0]      // 右下
+                    ];
+                }
+
+                // 查找邻居
+                for (const [dr, dc] of neighborOffsets) {
+                    const neighborRow = row + dr;
+                    const neighborCol = col + dc;
+                    const neighborId = `${neighborRow}_${neighborCol}`;
+                    if (gridMap.has(neighborId)) {
+                        neighbors.push(neighborId);
                     }
+                }
+
+                gridData.neighbors = neighbors;
+            }
+
+            // 第三步：绘制所有网格
+            for (const gridData of gridCoordinates) {
+                const row = gridData.row;
+                const col = gridData.col;
+                const centerX = col * xDist + (row % 2 === 1 ? xDist / 2 : 0);
+                const centerY = row * yDist;
+                const gridId = gridData.gridId;
+
+                const isHighlighted = selectedGridIds.has(gridId);
+                const hasCustomColor = gridColorMap.has(gridId);
+
+                // 获取网格颜色，使用颜色映射或默认颜色
+                const gridColor = gridColorMap.get(gridId) || defaultGridColor;
+
+                // 绘制六边形（有自定义颜色的网格一直保持填充）
+                drawHexagon(ctx, centerX, centerY, r, isHighlighted, gridColor, hasCustomColor);
+
+                // 如果开启了坐标显示，绘制坐标标签
+                if (coordEnabled) {
+                    ctx.fillStyle = isHighlighted ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.9)';
+                    ctx.font = `${Math.max(10, r / 3)}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const label = `(${Math.round(gridData.x)}, ${Math.round(gridData.y)})`;
+                    ctx.fillText(label, centerX, centerY);
                 }
             }
 
