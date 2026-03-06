@@ -956,17 +956,19 @@
             const xDist = r * Math.sqrt(3);
             const yDist = r * 1.5;
 
-            // Legend配置
-            const legendItemHeight = 28;
-            const legendPadding = 10;
-            const legendColorBoxSize = 20;
-            const legendTextMargin = 8;
-            const legendFontSize = 14;
+            // Legend配置 - 根据图片尺寸动态计算
+            const minDimension = Math.min(naturalWidth, naturalHeight);
+            const legendFontSize = Math.max(12, Math.round(minDimension / 40));
+            const legendItemHeight = Math.round(legendFontSize * 2);
+            const legendPadding = Math.round(legendFontSize * 0.8);
+            const legendColorBoxSize = Math.round(legendFontSize * 1.4);
+            const legendTextMargin = Math.round(legendFontSize * 0.6);
             const legendItems = presetColors.length;
-            const legendWidth = 150;
+            const legendWidth = Math.round(legendFontSize * 11);
             const legendHeight = legendPadding * 2 + legendItems * legendItemHeight;
-            const legendX = naturalWidth - legendWidth - 20;
-            const legendY = naturalHeight - legendHeight - 20;
+            const legendMargin = Math.round(legendFontSize * 1.5);
+            const legendX = naturalWidth - legendWidth - legendMargin;
+            const legendY = naturalHeight - legendHeight - legendMargin;
 
             // 构建SVG
             let svgContent = `<?xml version="1.0" encoding="UTF-8"?>
@@ -1014,7 +1016,7 @@
                 const label = colorToLabelMap.get(color);
                 const itemY = legendPadding + index * legendItemHeight;
                 const colorBoxY = itemY + (legendItemHeight - legendColorBoxSize) / 2;
-                const textY = itemY + legendItemHeight - (legendItemHeight - legendFontSize) / 2 - 2;
+                const textY = itemY + legendItemHeight - (legendItemHeight - legendFontSize) / 2 - Math.round(legendFontSize * 0.15);
 
                 svgContent += `    <!-- ${label} -->
     <rect x="${legendPadding}" y="${colorBoxY}" width="${legendColorBoxSize}" height="${legendColorBoxSize}" fill="${color}" fill-opacity="0.8" stroke="#000000" stroke-opacity="1" stroke-width="1"/>
