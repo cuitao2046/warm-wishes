@@ -268,6 +268,10 @@
             justify-content: center;
         }
 
+        .grid-controls-second {
+            margin-top: 8px;
+        }
+
         .grid-btn {
             background: #3a3a3a;
             color: #fff;
@@ -488,6 +492,8 @@
                         <input type="range" id="sizeSlider" class="size-slider" min="40" max="300" value="120" title="调整网格半径">
                         <span class="size-value" id="sizeValue">120</span>
                     </div>
+                </div>
+                <div class="grid-controls grid-controls-second">
                     <button class="export-btn" id="importBtn" title="导入坐标数据">📥 导入JSON</button>
                     <button class="export-btn" id="exportBtn" title="导出坐标数据">📤 导出JSON</button>
                     <button class="export-btn" id="exportSvgBtn" title="导出网格SVG矢量图">📥 导出SVG</button>
